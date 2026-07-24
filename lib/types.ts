@@ -40,7 +40,7 @@ export type HouseToken = {
 /** The disbursement executed by the treasury AI agent on Sui. */
 export type Disbursement = {
   digest: string; // Sui tx digest
-  asset: "USDC" | "SUI";
+  asset: "eUSD" | "USDC" | "SUI";
   amountUsdc: number;
   status: "executed" | "declined";
   agentRationale: string; // why the agent released funds

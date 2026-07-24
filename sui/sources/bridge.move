@@ -7,9 +7,13 @@
 /// event so the app can render Suiscan-verifiable proofs.
 module bridge::house {
     use std::string::{Self, String};
-    use sui::coin::{Self, TreasuryCap};
+    use sui::coin::{Self, TreasuryCap, Coin};
     use sui::balance::{Self, Balance};
     use sui::event;
+    use bridge::eusd::EUSD;
+
+    /// Repayment coin is worth less than the outstanding draw.
+    const EInsufficientRepayment: u64 = 1;
 
     /// One-time witness for the HOUSE equity currency.
     public struct HOUSE has drop {}
@@ -18,18 +22,21 @@ module bridge::house {
     public struct CollateralVault has key {
         id: UID,
         owner: address,
+        treasury: address,    // receives repayment
         article: String,      // artigo matricial (tax article)
         doc_hash: vector<u8>, // sha256 of the caderneta/KYC documents
         vpt: u64,             // Valor Patrimonial Tributário, in whole EUR
         equity: Balance<HOUSE>,
         locked: u64,          // HOUSE units locked as collateral
-        drawn_usdc: u64,      // USDC liquidity drawn
+        drawn_usdc: u64,      // USDC liquidity drawn (whole USD)
+        repaid: bool,
     }
 
     // ── Events (audit trail) ────────────────────────────────────────────
     public struct HouseTokenized has copy, drop { vault: address, owner: address, article: String, vpt: u64 }
     public struct DocumentAnchored has copy, drop { sha256: vector<u8>, article: String }
     public struct CollateralLocked has copy, drop { vault: address, locked: u64, drawn_usdc: u64 }
+    public struct LoanRepaid has copy, drop { vault: address, owner: address, repaid_eusd: u64, released_house: u64 }
 
     /// Publish-time: create the HOUSE currency and hand the treasury cap to the
     /// deployer (the protocol treasury) so only it can mint equity.
@@ -60,12 +67,14 @@ module bridge::house {
         let vault = CollateralVault {
             id: object::new(ctx),
             owner,
+            treasury: ctx.sender(),
             article: string::utf8(article),
             doc_hash,
             vpt,
             equity: coin::into_balance(minted),
             locked: 0,
             drawn_usdc: 0,
+            repaid: false,
         };
         event::emit(HouseTokenized { vault: vault.id.to_address(), owner, article: vault.article, vpt });
         transfer::share_object(vault);
@@ -84,9 +93,34 @@ module bridge::house {
         event::emit(CollateralLocked { vault: vault.id.to_address(), locked: lock_amt, drawn_usdc: draw_usdc });
     }
 
+    /// Repay the outstanding draw with eUSD. Settles the payment to the treasury,
+    /// clears the debt, and releases the locked HOUSE equity back to the owner.
+    public entry fun repay(vault: &mut CollateralVault, payment: Coin<EUSD>, ctx: &mut TxContext) {
+        let owed = vault.drawn_usdc * 1_000_000; // eUSD has 6 decimals
+        assert!(coin::value(&payment) >= owed, EInsufficientRepayment);
+        transfer::public_transfer(payment, vault.treasury);
+
+        // Release all HOUSE equity back to the owner.
+        let released_bal = balance::withdraw_all(&mut vault.equity);
+        let released_amt = balance::value(&released_bal);
+        transfer::public_transfer(coin::from_balance(released_bal, ctx), vault.owner);
+
+        vault.locked = 0;
+        vault.drawn_usdc = 0;
+        vault.repaid = true;
+        event::emit(LoanRepaid {
+            vault: vault.id.to_address(),
+            owner: vault.owner,
+            repaid_eusd: owed,
+            released_house: released_amt,
+        });
+    }
+
     // ── Read-only accessors ─────────────────────────────────────────────
     public fun vpt(v: &CollateralVault): u64 { v.vpt }
     public fun locked(v: &CollateralVault): u64 { v.locked }
     public fun drawn_usdc(v: &CollateralVault): u64 { v.drawn_usdc }
     public fun equity_value(v: &CollateralVault): u64 { balance::value(&v.equity) }
+    public fun owner(v: &CollateralVault): address { v.owner }
+    public fun is_repaid(v: &CollateralVault): bool { v.repaid }
 }

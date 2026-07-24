@@ -51,6 +51,7 @@ export default function StepCollateralize({ lang, session, patch, next, back, ca
         body: JSON.stringify({
           vpt, collateralPct: pct, drawAmount: clampedDraw,
           kyc: session.kyc, accountId: session.accountId, vaultId: session.token?.vaultId,
+          article: session.property?.artigoMatricial, morada: session.property?.morada, coinType: session.token?.coinType,
         }),
       });
       const json = await res.json();

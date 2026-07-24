@@ -24,16 +24,16 @@ stablecoin liquidity in minutes — 100% on Sui, auditable end to end:
 
 | Sui primitive | Where it lives |
 |---|---|
-| **Move package** (published to testnet) | `sui/sources/bridge.move` — `HOUSE` coin, `CollateralVault`, `tokenize` / `anchor` / `lock_and_draw`, events |
+| **Move package** (published to testnet) | `sui/sources/bridge.move` — `HOUSE` coin, `CollateralVault`, `tokenize` / `anchor` / `lock_and_draw` / **`repay`** (settle eUSD + release collateral), events; `sui/sources/eusd.move` — **eUSD** mintable USD stablecoin |
 | **Programmable transaction blocks** | `lib/sui.ts` — mint+vault, anchor event, `lock_and_draw`+coin transfer in one PTB |
 | **Walrus** decentralized storage | `lib/walrus.ts` — encrypted caderneta/KYC blobs |
 | **Seal** access-controlled encryption | `lib/walrus.ts` — threshold encrypt before upload (AES-GCM fallback) |
 | **Privy** embedded Sui wallet (zkLogin-style abstraction) | `components/WalletProvider.tsx` — `createWallet({ chainType: 'sui' })` |
 
 **Published on Sui testnet:**
-- Package: `0x914afabdbf811f4f7120ca538b4cf1de336deb9c2fd441c1035e61fbeade5958`
-- HOUSE coin: `…::house::HOUSE`
-- Verified live txs (Suiscan testnet): tokenize, `anchor`, and agent disbursement all execute on-chain.
+- Package: `0xef6afd31cf94cf0850a85dbc23fd3678b243468c928ca6c149f186a1bb6b9b13`
+- HOUSE equity coin: `…::house::HOUSE` · **eUSD stablecoin**: `…::eusd::EUSD`
+- Verified live txs (Suiscan testnet): tokenize, `anchor`, and the agent's disbursement (which **mints 37,500 eUSD** — a real full-value stablecoin transfer) all execute on-chain.
 
 Plus chain-agnostic **World ID** (unique human + PT jurisdiction) and **Claude** (document parsing + the treasury agent's reasoning).
 
@@ -68,7 +68,7 @@ Copy the printed package id + TreasuryCap into `.env.local` (`BRIDGE_PACKAGE_ID`
 ### Enabling each integration (all independent)
 
 - **Sui settlement** (real mint / anchor / disburse): set `SUI_SECRET_KEY` (funded treasury) + `BRIDGE_PACKAGE_ID` + `BRIDGE_TREASURY_CAP`. Fund via https://faucet.sui.io.
-- **USDC payout**: fund the treasury with Circle testnet USDC (https://faucet.circle.com) — otherwise disbursement falls back to a real **SUI** transfer (still on-chain).
+- **Stablecoin payout**: the treasury mints our own **eUSD** (`EUSD_TREASURY_CAP`) so disbursements are real full-value transfers (thousands of USD). Falls back to Circle USDC (if held) or a symbolic SUI transfer when `EUSD_TREASURY_CAP` is unset.
 - **Privy wallet**: `NEXT_PUBLIC_PRIVY_APP_ID` from dashboard.privy.io.
 - **Walrus storage**: needs the treasury funded with **WAL** — otherwise a demo blob id is returned (the Sui anchor is still real).
 - **AI**: `ANTHROPIC_API_KEY`. **World ID**: a real `NEXT_PUBLIC_WORLD_APP_ID`.
@@ -81,13 +81,15 @@ Without keys, each step returns a clearly-marked **demo** result so the flow is 
 
 ```
 sui/                     Move package (bridge::house) + Move.toml
-app/[lang]/              pt|en shell (landing, bridge wizard, dashboard)
+app/[lang]/              pt|en shell (landing, bridge wizard, loans management, dashboard)
 app/api/
   parse-docs/            Claude vision → structured caderneta fields
   store-docs/            Seal-encrypt → Walrus upload → Sui anchor event
   worldid/verify/        World ID proof verification
   sui/tokenize/          Move `tokenize` → HOUSE coins + CollateralVault
-  agent/disburse/        treasury AI agent → lock_and_draw + USDC transfer (1 PTB)
+  sui/loans/             list positions (live vault state) + treasury summary
+  sui/repay/             Move `repay` → settle eUSD + release collateral (1 PTB)
+  agent/disburse/        treasury AI agent → lock_and_draw + eUSD mint (1 PTB)
 lib/
   sui.ts  walrus.ts  worldid.ts  agent.ts  ai-parse.ts
 components/              Privy wallet + the 6-step wizard + dashboard

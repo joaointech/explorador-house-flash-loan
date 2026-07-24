@@ -30,3 +30,6 @@ yarn-error.log*
 
 # Sui Move build artifacts
 sui/build/
+
+# loan registry (server-side demo store)
+.loans.json

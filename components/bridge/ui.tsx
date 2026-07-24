@@ -58,7 +58,7 @@ export function SecondaryButton({ children, onClick, disabled }: { children: Rea
   );
 }
 
-/** A labelled proof row — links to HashScan / shows an id returned by a chain call. */
+/** A labelled proof row — links to Suiscan / shows an id returned by a chain call. */
 export function ProofRow({ label, value, href, mono = true }: { label: string; value: string; href?: string; mono?: boolean }) {
   const body = (
     <span className={`truncate ${mono ? "font-mono" : ""} text-slate-800 dark:text-slate-200`}>{value}</span>

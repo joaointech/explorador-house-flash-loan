@@ -58,10 +58,10 @@ const pt: Dictionary = {
     kicker: "Como funciona",
     title: "Do documento à liquidez, em seis passos",
     steps: [
-      { title: "1 · Ligar carteira", body: "Ligue a sua carteira Hedera (HashPack) com um clique." },
+      { title: "1 · Entrar", body: "Entre com email ou conta social — a Privy cria uma carteira Sui não-custodial, sem extensão." },
       { title: "2 · Documentos + IA", body: "Carregue a caderneta predial e o documento de identificação. A IA extrai o artigo matricial, o VPT, a morada e o proprietário." },
       { title: "3 · KYC World ID", body: "Prove que é um humano único e residente em Portugal com o World ID — sem revelar dados pessoais." },
-      { title: "4 · Tokenizar", body: "O imóvel é emitido como token de capital fungível na Hedera (HTS), com fornecimento indexado ao VPT." },
+      { title: "4 · Tokenizar", body: "O imóvel é emitido como moedas de capital HOUSE na Sui (pacote Move), com fornecimento indexado ao VPT." },
       { title: "5 · Colateralizar", body: "Bloqueie uma fração dos tokens como garantia. Um agente de IA valida a garantia e o KYC." },
       { title: "6 · Levantar", body: "O agente de tesouraria transfere USDC autonomamente. Levante os fundos para o sinal da casa nova." },
     ],
@@ -71,7 +71,7 @@ const pt: Dictionary = {
     title: "Transparência criptográfica em cada passo",
     items: [
       { title: "Documentos cifrados", body: "A caderneta e o KYC são cifrados com Seal e guardados na Walrus — só você controla o acesso." },
-      { title: "Registo imutável", body: "O hash de cada documento é ancorado no Hedera Consensus Service — um rasto de auditoria inviolável." },
+      { title: "Registo imutável", body: "O hash de cada documento é ancorado on-chain na Sui — um rasto de auditoria inviolável." },
       { title: "Pagamento agêntico", body: "A tesouraria só liberta fundos através de um agente que verifica garantia e humano-real via World ID." },
     ],
   },
@@ -82,7 +82,7 @@ const pt: Dictionary = {
   },
   footer: {
     tagline: "Liquidez-ponte imobiliária, colateralizada e auditável on-chain.",
-    built: "Construído na ETHGlobal Lisboa 2026 · Hedera · Walrus · World App",
+    built: "Construído na ETHGlobal Lisboa 2026 · Sui · Walrus · World App",
     rights: "Todos os direitos reservados.",
   },
 };
@@ -112,10 +112,10 @@ const en: Dictionary = {
     kicker: "How it works",
     title: "From document to liquidity, in six steps",
     steps: [
-      { title: "1 · Connect wallet", body: "Connect your Hedera wallet (HashPack) in one click." },
+      { title: "1 · Sign in", body: "Sign in with email or a social account — Privy provisions a non-custodial Sui wallet, no extension." },
       { title: "2 · Documents + AI", body: "Upload the caderneta predial and your ID. AI extracts the tax article, VPT value, address and owner." },
       { title: "3 · World ID KYC", body: "Prove you're a unique human resident in Portugal with World ID — without revealing personal data." },
-      { title: "4 · Tokenize", body: "The property is issued as a fungible equity token on Hedera (HTS), supply pegged to its VPT value." },
+      { title: "4 · Tokenize", body: "The property is issued as HOUSE equity coins on Sui (a Move package), supply pegged to its VPT value." },
       { title: "5 · Collateralize", body: "Lock a fraction of the tokens as collateral. An AI agent verifies the collateral and KYC." },
       { title: "6 · Withdraw", body: "The treasury agent transfers USDC autonomously. Withdraw the funds for the new home's signal." },
     ],
@@ -125,7 +125,7 @@ const en: Dictionary = {
     title: "Cryptographic transparency at every step",
     items: [
       { title: "Encrypted documents", body: "The caderneta and KYC are encrypted with Seal and stored on Walrus — only you control access." },
-      { title: "Immutable record", body: "Every document's hash is anchored on the Hedera Consensus Service — a tamper-proof audit trail." },
+      { title: "Immutable record", body: "Every document's hash is anchored on-chain on Sui — a tamper-proof audit trail." },
       { title: "Agentic payment", body: "The treasury only releases funds through an agent that verifies collateral and a real human via World ID." },
     ],
   },
@@ -136,7 +136,7 @@ const en: Dictionary = {
   },
   footer: {
     tagline: "Real-estate bridge liquidity, collateralized and auditable on-chain.",
-    built: "Built at ETHGlobal Lisbon 2026 · Hedera · Walrus · World App",
+    built: "Built at ETHGlobal Lisbon 2026 · Sui · Walrus · World App",
     rights: "All rights reserved.",
   },
 };

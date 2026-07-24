@@ -1,54 +1,53 @@
-# Developer & user feedback — explorador Bridge
+# Developer & user feedback — explorador Bridge (Sui)
 
-Feedback for the sponsor tracks we built on, from actually integrating each SDK during
-ETHGlobal Lisbon 2026.
+Feedback from actually building on each stack during ETHGlobal Lisbon 2026.
 
-## Hedera (HTS · HCS · Scheduled Transactions · Agent Kit)
+## Sui (Move · PTBs · TypeScript SDK)
 
-**Developer experience**
-- `@hashgraph/sdk` (v2.81) was the smoothest of the four integrations — HTS `TokenCreateTransaction`,
-  HCS `TopicMessageSubmitTransaction`, and `ScheduleCreateTransaction` are consistent and well-typed.
-- Being able to hit **≥2 native services (HTS + HCS + Scheduled) with SDK only, no Solidity** is a
-  genuine differentiator — our whole collateral+audit+payout path is contract-free.
-- Agentic payments: the pattern of "LLM reasons over state → executes a Scheduled Transaction"
-  fit our treasury agent perfectly. A first-class `hedera-agent-kit` example for *conditional*
-  disbursement (only after an off-chain verification passes) would have saved time.
+**What worked well**
+- `sui move build` + `sui client publish` is a genuinely fast loop — we published a real package
+  (`HOUSE` coin + shared `CollateralVault` + entry fns + events) to testnet in minutes.
+- Move 2024 (`public struct`, `UID.to_address()`, `coin::create_currency`) is ergonomic. Shared
+  objects + events map cleanly onto our "vault holds collateral, every step emits a proof" model.
+- Programmable transaction blocks let the treasury agent do `lock_and_draw` **and** transfer the
+  stablecoin in a single tx — one Suiscan digest proves the whole disbursement.
 
-**User feedback**
-- Scheduled Transactions are a great UX primitive for "release funds once conditions are met" —
-  users understand "the payment is scheduled and will settle" better than a raw transfer.
+**Sharp edges (cost us the most time)**
+- **`@mysten/sui` v2 is a big break.** `SuiClient` / `getFullnodeUrl` from `@mysten/sui/client`
+  are gone; the JSON-RPC client is now `SuiJsonRpcClient` + `getJsonRpcFullnodeUrl` under
+  `@mysten/sui/jsonRpc`, and it's already flagged **deprecated**. A clear "v1 → v2 client
+  migration" page would have saved an hour.
+- **The public testnet fullnode dropped JSON-RPC.** `https://fullnode.testnet.sui.io:443` returns
+  **404** for JSON-RPC now (gRPC-only). Every SDK example still uses `getFullnodeUrl('testnet')`,
+  which points there — so out-of-the-box code 404s. We had to hardcode a working third-party
+  JSON-RPC endpoint (`rpc-testnet.suiscan.xyz`). Please update the SDK default, or ship the gRPC
+  client as the documented default with runnable examples.
+- **`create_currency` is deprecated** in favor of `coin_registry::new_currency_with_otw` but the
+  new path isn't in the coin examples yet.
 
-## World (World ID · Identity Check · AgentKit)
+## Privy (embedded Sui wallet)
 
-**Developer experience**
-- IDKit v4 is a big shift from v3 (`proofOfHuman`, `identityCheck`, `IDKitRequestWidget`,
-  `useIDKitRequest`). The credential-builder model is powerful but the migration docs for
-  v3→v4 verification (`verifyCloudProof` is gone) were the hardest thing to find.
-- **Identity Check** (jurisdiction + age attributes) is exactly right for real-estate KYC —
-  proving "unique human, resident in PT, 18+" without exposing the ID is the whole pitch.
-- **AgentKit angle**: our treasury agent only acts on behalf of a World-ID-verified human. A
-  documented recipe for "service verifies a human-backed agent before granting a right/fund"
-  would make this track much more approachable.
+- Sui support exists but is **hard to discover** — it's under "Tier 2 / extended chains"
+  (`@privy-io/react-auth/extended-chains` → `createWallet({ chainType: 'sui' })`), not in the main
+  chains docs, and it didn't show up in general search. A top-level "Sui with Privy" quickstart
+  would help a lot. Once found, the flow is clean and the email→Sui-wallet UX is exactly what we
+  wanted (it removed the extension/testnet-account friction that blocked our first wallet attempt).
+- The two-step reactive flow (`login()` opens a modal, then you `createWallet` after `authenticated`
+  flips) needs an effect, not a linear await — worth documenting.
 
-**User feedback**
-- Users loved that KYC reveals *nothing* about their identity beyond the attested claims.
+## Walrus + Seal
 
-## Sui (Walrus · Seal)
+- `writeBlob` is clean once the Sui client is constructed, but requires the signer to hold **WAL**;
+  a one-command testnet WAL faucet in the CLI (like `sui client faucet`) would smooth demos.
+- **Seal** threshold encryption needs a deployed access-control Move package (`seal_approve*`), which
+  is a lot for a hackathon — we ship AES-GCM as the honest fallback and wire Seal behind config.
 
-**Developer experience**
-- `@mysten/sui` **v2** moved `SuiClient`/`getFullnodeUrl` — the Walrus/Seal peer-dep chain
-  (`@mysten/walrus@1.2.9` peers `@mysten/sui@^2.22.1`) now needs `SuiJsonRpcClient` +
-  `getJsonRpcFullnodeUrl` from `@mysten/sui/jsonRpc`. This cost us the most debugging time;
-  a pinned "Walrus + Sui v2 quickstart" would help a lot.
-- Walrus `writeBlob` is clean once the client is constructed. **Seal** is the steeper part —
-  the threshold flow needs a deployed access-control Move package (`seal_approve*`), which is a
-  lot for a hackathon; we ship AES-GCM as the honest fallback and wire Seal behind config.
-
-**User feedback**
-- "My documents are encrypted before they leave my device and I control access" resonates
-  strongly for sensitive property/KYC paperwork.
+## World ID
+- IDKit v4's credential-builder model (`proofOfHuman`, `identityCheck`) is powerful; the v3→v4
+  verification migration (`verifyCloudProof` is gone) was the hardest thing to find.
 
 ## What we'd build next
-- Real Move access-control package so **Seal** gates decryption on the loan being active.
-- **The Graph** subgraph indexing the HTS token + HCS audit events to feed the agent's risk model.
-- **ENS** name for the treasury agent so counterparties can discover/verify it.
+- Real Seal access policy so decryption is gated on the loan being active.
+- Fund the treasury with Circle testnet USDC so the disbursement is USDC end-to-end (today it
+  falls back to a real SUI transfer when the treasury holds no USDC).
+- zkLogin alongside Privy; a Sui subgraph over the vault events for the agent's risk model.

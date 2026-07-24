@@ -27,3 +27,6 @@ yarn-error.log*
 
 # typescript
 *.tsbuildinfo
+
+# Sui Move build artifacts
+sui/build/

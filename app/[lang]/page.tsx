@@ -84,7 +84,7 @@ export default async function Landing({ params }: { params: Promise<{ lang: stri
                 <p className="mt-1 text-xs text-slate-400">{lang === "en" ? "collateral 30% · disbursed by AI agent" : "garantia 30% · pago por agente IA"}</p>
               </div>
               <div className="flex flex-wrap gap-1.5 pt-1">
-                {["Hedera HTS", "Walrus", "World ID", "HCS"].map((b) => (
+                {["Sui Move", "Walrus", "Seal", "World ID"].map((b) => (
                   <span key={b} className="rounded-full bg-white/15 px-2.5 py-1 text-[11px] font-semibold text-white/90">{b}</span>
                 ))}
               </div>

@@ -46,9 +46,10 @@ async function sealEncrypt(bytes: Uint8Array): Promise<{ sealed: Uint8Array; use
   if (pkg && serverIds.length > 0) {
     try {
       const { SealClient } = await import("@mysten/seal");
-      const { SuiJsonRpcClient, getJsonRpcFullnodeUrl } = await import("@mysten/sui/jsonRpc");
+      const { SuiJsonRpcClient } = await import("@mysten/sui/jsonRpc");
       const net = (process.env.SUI_NETWORK as "testnet") || "testnet";
-      const suiClient = new SuiJsonRpcClient({ url: getJsonRpcFullnodeUrl(net), network: net });
+      const url = process.env.SUI_RPC_URL || "https://sui-testnet-endpoint.blockvision.org";
+      const suiClient = new SuiJsonRpcClient({ url, network: net });
       const client = new SealClient({
         suiClient: suiClient as never,
         serverConfigs: serverIds.map((id) => ({ objectId: id, weight: 1 })),
@@ -78,13 +79,16 @@ async function uploadToWalrus(sealed: Uint8Array): Promise<{ blobId: string; dem
   }
   try {
     const { WalrusClient } = await import("@mysten/walrus");
-    const { SuiJsonRpcClient, getJsonRpcFullnodeUrl } = await import("@mysten/sui/jsonRpc");
+    const { SuiJsonRpcClient } = await import("@mysten/sui/jsonRpc");
     const { Ed25519Keypair } = await import("@mysten/sui/keypairs/ed25519");
+    const { decodeSuiPrivateKey } = await import("@mysten/sui/cryptography");
 
     const network = (process.env.SUI_NETWORK as "testnet") || "testnet";
-    const suiClient = new SuiJsonRpcClient({ url: getJsonRpcFullnodeUrl(network), network });
+    const url = process.env.SUI_RPC_URL || "https://sui-testnet-endpoint.blockvision.org";
+    const suiClient = new SuiJsonRpcClient({ url, network });
     const walrus = new WalrusClient({ network, suiClient: suiClient as never });
-    const signer = Ed25519Keypair.fromSecretKey(process.env.SUI_SECRET_KEY!);
+    const { secretKey } = decodeSuiPrivateKey(process.env.SUI_SECRET_KEY!);
+    const signer = Ed25519Keypair.fromSecretKey(secretKey);
 
     const { blobId } = await walrus.writeBlob({
       blob: sealed,

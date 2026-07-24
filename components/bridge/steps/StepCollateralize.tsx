@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import type { StepProps } from "../BridgeWizard";
 import type { Disbursement } from "@/lib/types";
-import { hashscanTx } from "@/lib/types";
+import { suiscanTx, onChain } from "@/lib/types";
 import { StepHeading, Card, PrimaryButton, SecondaryButton, Badge, Spinner, ProofRow } from "../ui";
 
 export default function StepCollateralize({ lang, session, patch, next, back, canBack }: StepProps) {
@@ -22,20 +22,20 @@ export default function StepCollateralize({ lang, session, patch, next, back, ca
   const t = lang === "en"
     ? {
         kicker: "Step 5", title: "Collateralize & draw",
-        sub: "Lock a fraction of your house-equity tokens as collateral. The treasury AI agent verifies your collateral and World-ID human, then autonomously disburses USDC via a Hedera Scheduled Transaction.",
+        sub: "Lock a fraction of your HOUSE equity as collateral. The treasury AI agent verifies your collateral and World-ID human, then autonomously records the draw on the vault and transfers USDC — one Sui transaction.",
         collateral: "Collateral locked", locked: "Locked equity", draw: "Draw (USDC)", max: "Max (70% LTV)",
         run: "Lock & request liquidity", running: "Agent evaluating & disbursing…",
-        agent: "Treasury AI agent", approved: "Approved & scheduled", declined: "Declined",
-        schedule: "Scheduled tx", amount: "Disbursed", cont: "Continue", back: "Back", retry: "Adjust",
+        agent: "Treasury AI agent", approved: "Approved & executed", declined: "Declined",
+        tx: "Sui tx", amount: "Disbursed", cont: "Continue", back: "Back", retry: "Adjust",
         err: "Something went wrong. Try again.",
       }
     : {
         kicker: "Passo 5", title: "Colateralizar & levantar",
-        sub: "Bloqueie uma fração dos tokens de capital como garantia. O agente de IA da tesouraria valida a garantia e o humano-World-ID, e transfere USDC autonomamente via uma Transação Agendada na Hedera.",
+        sub: "Bloqueie uma fração do seu capital HOUSE como garantia. O agente de IA da tesouraria valida a garantia e o humano-World-ID, regista o levantamento no vault e transfere USDC autonomamente — uma transação Sui.",
         collateral: "Garantia bloqueada", locked: "Capital bloqueado", draw: "Levantar (USDC)", max: "Máx (70% LTV)",
         run: "Bloquear & pedir liquidez", running: "Agente a avaliar & pagar…",
-        agent: "Agente IA da tesouraria", approved: "Aprovado & agendado", declined: "Recusado",
-        schedule: "Transação agendada", amount: "Transferido", cont: "Continuar", back: "Voltar", retry: "Ajustar",
+        agent: "Agente IA da tesouraria", approved: "Aprovado & executado", declined: "Recusado",
+        tx: "Transação Sui", amount: "Transferido", cont: "Continuar", back: "Voltar", retry: "Ajustar",
         err: "Algo correu mal. Tente novamente.",
       };
 
@@ -50,7 +50,7 @@ export default function StepCollateralize({ lang, session, patch, next, back, ca
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           vpt, collateralPct: pct, drawAmount: clampedDraw,
-          kyc: session.kyc, accountId: session.accountId, tokenId: session.token?.tokenId,
+          kyc: session.kyc, accountId: session.accountId, vaultId: session.token?.vaultId,
         }),
       });
       const json = await res.json();
@@ -64,7 +64,7 @@ export default function StepCollateralize({ lang, session, patch, next, back, ca
     }
   };
 
-  const approved = result && result.scheduleId;
+  const approved = result && result.status === "executed";
 
   return (
     <div>
@@ -79,8 +79,8 @@ export default function StepCollateralize({ lang, session, patch, next, back, ca
             </div>
             {approved && (
               <div className="space-y-2">
-                <ProofRow label={t.amount} value={`$${fmt(result.amountUsdc)} USDC`} mono={false} />
-                <ProofRow label={t.schedule} value={result.scheduleId} href={result.transactionId && !result.transactionId.startsWith("demo") ? hashscanTx(result.transactionId) : undefined} />
+                <ProofRow label={t.amount} value={`$${fmt(result.amountUsdc)} ${result.asset}`} mono={false} />
+                <ProofRow label={t.tx} value={result.digest} href={onChain(result.digest) ? suiscanTx(result.digest) : undefined} />
               </div>
             )}
             <div className="flex items-center gap-3 pt-1">

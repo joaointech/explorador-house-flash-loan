@@ -17,7 +17,7 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://bridge.explorador.pt"),
   title: "explorador Bridge",
   description:
-    "Liquidez-ponte imobiliária: colateralize a casa que está a vender e levante fundos para o CPCV da casa nova. On-chain na Hedera, com Walrus e World ID.",
+    "Liquidez-ponte imobiliária: colateralize a casa que está a vender e levante fundos para o CPCV da casa nova. On-chain na Sui, com Walrus, Seal e World ID.",
   applicationName: "explorador Bridge",
   icons: {
     icon: [

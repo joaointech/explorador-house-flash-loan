@@ -1,4 +1,4 @@
-# explorador Bridge — home-equity bridge liquidity
+# explorador Bridge — home-equity bridge liquidity on Sui
 
 **ETHGlobal Lisbon 2026** · a continuation of [explorador](https://explorador.pt) (irrealista), Portugal's AI real-estate intelligence platform.
 
@@ -8,42 +8,42 @@ signing the new home's **CPCV** (promissory contract) needs the *sinal* — ofte
 are slow and paperwork-heavy.
 
 **explorador Bridge** lets a homeowner collateralize the house they're selling and draw
-stablecoin liquidity in minutes, fully on-chain and auditable:
+stablecoin liquidity in minutes — 100% on Sui, auditable end to end:
 
-1. **Connect** a Hedera wallet (HashPack).
-2. **Documents + AI** — upload the *caderneta predial* + ID; **Claude** extracts the tax
-   article, VPT value, address and owner.
+1. **Sign in** — email / social login via **Privy** → a non-custodial **Sui** embedded wallet (no extension, no seed phrase).
+2. **Documents + AI** — upload the *caderneta predial* + ID; **Claude** extracts the tax article, VPT value, address and owner.
 3. **World ID KYC** — prove a unique human resident in Portugal (Identity Check jurisdiction + age).
-4. **Encrypt & anchor** — documents are encrypted and stored on **Walrus**; the document
-   hash is anchored on **Hedera HCS** (immutable audit trail).
-5. **Tokenize** — the house is minted as an **HTS fungible equity token**, supply pegged 1:1 to VPT (€).
-6. **Collateralize & draw** — lock a fraction of the tokens; an **AI treasury agent** verifies
-   collateral + the World-ID human and **autonomously disburses USDC** via a **Hedera Scheduled Transaction**.
-7. **Withdraw** the liquidity for the new CPCV. Repaid automatically when the old house sells.
+4. **Encrypt & anchor** — documents are encrypted (Seal / AES) and stored on **Walrus**; the document hash is anchored on **Sui** (a `DocumentAnchored` event).
+5. **Tokenize** — the house is minted as **HOUSE equity coins** by a published **Move package**, supply pegged 1:1 to VPT (€), held in a shared `CollateralVault` object.
+6. **Collateralize & draw** — lock a fraction of the equity; an **AI treasury agent** verifies collateral + the World-ID human and, in **one Sui transaction**, records the draw on the vault (`lock_and_draw`) and transfers **USDC**.
+7. **Withdraw** the liquidity for the new CPCV. Repaid when the old house sells.
 
 ---
 
-## Sponsor track integrations
+## 100% Sui — Best App Built on Sui
 
-| Sponsor | Track | Where it lives |
-|---|---|---|
-| **Hedera** | Tokenization on Hedera | `lib/hedera.ts` → `createHouseToken` (HTS fungible, SDK only, no Solidity) |
-| **Hedera** | "No Solidity Allowed" (≥2 native services) | HTS + **HCS** (`anchorDocumentHash`) + **Scheduled Transactions** (`scheduleUsdcDisbursement`) — SDK only |
-| **Hedera** | AI & Agentic Payments | `lib/agent.ts` → treasury agent reasons (Claude) then executes the Scheduled USDC payment |
-| **World** | Identity Check Beta | `lib/worldid.ts` → verify unique human + jurisdiction (PT) + age before collateralizing |
-| **World** | AgentKit New Use Cases | the treasury agent only acts on behalf of a **World-ID-verified unique human** (bot-vs-human gate) |
-| **Sui** | Best App Built on Sui | `lib/walrus.ts` → **Walrus** blob storage + **Seal** encryption of the caderneta/KYC docs |
+| Sui primitive | Where it lives |
+|---|---|
+| **Move package** (published to testnet) | `sui/sources/bridge.move` — `HOUSE` coin, `CollateralVault`, `tokenize` / `anchor` / `lock_and_draw`, events |
+| **Programmable transaction blocks** | `lib/sui.ts` — mint+vault, anchor event, `lock_and_draw`+coin transfer in one PTB |
+| **Walrus** decentralized storage | `lib/walrus.ts` — encrypted caderneta/KYC blobs |
+| **Seal** access-controlled encryption | `lib/walrus.ts` — threshold encrypt before upload (AES-GCM fallback) |
+| **Privy** embedded Sui wallet (zkLogin-style abstraction) | `components/WalletProvider.tsx` — `createWallet({ chainType: 'sui' })` |
 
-Every sponsor call is real on testnet when the corresponding keys are set (see below); without
-keys, each step returns a clearly-marked **demo** result so the flow is always demoable.
+**Published on Sui testnet:**
+- Package: `0x914afabdbf811f4f7120ca538b4cf1de336deb9c2fd441c1035e61fbeade5958`
+- HOUSE coin: `…::house::HOUSE`
+- Verified live txs (Suiscan testnet): tokenize, `anchor`, and agent disbursement all execute on-chain.
+
+Plus chain-agnostic **World ID** (unique human + PT jurisdiction) and **Claude** (document parsing + the treasury agent's reasoning).
 
 ---
 
 ## Design system
 
 The frontend reuses the **explorador** design system verbatim — Sora variable font, brand blue
-`#2563eb` / navy `#0F172A`, class-based dark mode, `app/[lang]` pt/en i18n, and the compass logo.
-Built on **Next.js 16 · React 19 · Tailwind v4**.
+`#2563eb` / navy `#0F172A`, class-based dark mode, `app/[lang]` pt/en i18n, compass logo.
+**Next.js 16 · React 19 · Tailwind v4.**
 
 ---
 
@@ -55,59 +55,45 @@ cp .env.example .env.local     # fill in what you have; everything is optional f
 npm run dev                    # http://localhost:3000  (use -p 3007 if 3000 is taken)
 ```
 
-Open `/pt` (or `/en`) → **Iniciar a ponte / Start the bridge**. Use **"Use demo account"** to walk
-the full flow without any keys.
+Open `/pt` (or `/en`) → **Iniciar a ponte / Start the bridge**. Use **"Use demo wallet"** to walk
+the full flow without any keys. Each real testnet id links to **Suiscan**.
 
-### Enabling real testnet integrations
+### The Move package
 
-Set these in `.env.local` (each is independent — configure only what you want live):
-
+```bash
+cd sui && sui client publish --gas-budget 200000000   # or: npm run sui:publish
 ```
-# Hedera (testnet) — enables real HTS mint, HCS anchor, Scheduled disbursement
-HEDERA_OPERATOR_ID=0.0.xxxxxx
-HEDERA_OPERATOR_KEY=302e...            # ED25519 or ECDSA DER private key
-USDC_TOKEN_ID=0.0.xxxxxx               # HTS stablecoin for disbursement (mint your own if needed)
-HCS_TOPIC_ID=0.0.xxxxxx                # optional; auto-created if omitted
+Copy the printed package id + TreasuryCap into `.env.local` (`BRIDGE_PACKAGE_ID`, `BRIDGE_TREASURY_CAP`, `HOUSE_COIN_TYPE`).
 
-# Anthropic — enables real caderneta parsing + agent reasoning
-ANTHROPIC_API_KEY=sk-ant-...
+### Enabling each integration (all independent)
 
-# World ID — enables real ZK proof verification (Developer Portal)
-NEXT_PUBLIC_WORLD_APP_ID=app_...       # a real staging/prod app id (not app_staging_demo)
-NEXT_PUBLIC_WORLD_ACTION=collateralize-house
+- **Sui settlement** (real mint / anchor / disburse): set `SUI_SECRET_KEY` (funded treasury) + `BRIDGE_PACKAGE_ID` + `BRIDGE_TREASURY_CAP`. Fund via https://faucet.sui.io.
+- **USDC payout**: fund the treasury with Circle testnet USDC (https://faucet.circle.com) — otherwise disbursement falls back to a real **SUI** transfer (still on-chain).
+- **Privy wallet**: `NEXT_PUBLIC_PRIVY_APP_ID` from dashboard.privy.io.
+- **Walrus storage**: needs the treasury funded with **WAL** — otherwise a demo blob id is returned (the Sui anchor is still real).
+- **AI**: `ANTHROPIC_API_KEY`. **World ID**: a real `NEXT_PUBLIC_WORLD_APP_ID`.
 
-# Sui / Walrus / Seal (testnet) — enables real encrypted blob storage
-SUI_SECRET_KEY=suiprivkey1...          # funded with testnet SUI + WAL
-SUI_NETWORK=testnet
-SEAL_PACKAGE_ID=0x...                  # optional; enables real Seal threshold encryption (else AES-GCM)
-SEAL_KEY_SERVER_IDS=0x...,0x...        # comma-separated Seal key-server object ids
-SEAL_MASTER_KEY=...                    # AES fallback key
-
-# Wallet
-NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=  # for real HashPack via WalletConnect
-NEXT_PUBLIC_DEMO_ACCOUNT_ID=0.0.xxxxxx # a testnet account for the "demo account" button
-```
-
-Where a testnet id is produced, the UI links to **HashScan** so you can verify it live.
+Without keys, each step returns a clearly-marked **demo** result so the flow is always demoable.
 
 ---
 
 ## Architecture
 
 ```
-app/[lang]/            pt|en shell (landing, bridge wizard, dashboard)
+sui/                     Move package (bridge::house) + Move.toml
+app/[lang]/              pt|en shell (landing, bridge wizard, dashboard)
 app/api/
-  parse-docs/          Claude vision → structured caderneta fields
-  store-docs/          Seal-encrypt → Walrus upload → HCS anchor
-  worldid/verify/      World ID proof verification
-  hedera/tokenize/     HTS fungible mint + associate
-  agent/disburse/      treasury AI agent → Scheduled USDC disbursement
+  parse-docs/            Claude vision → structured caderneta fields
+  store-docs/            Seal-encrypt → Walrus upload → Sui anchor event
+  worldid/verify/        World ID proof verification
+  sui/tokenize/          Move `tokenize` → HOUSE coins + CollateralVault
+  agent/disburse/        treasury AI agent → lock_and_draw + USDC transfer (1 PTB)
 lib/
-  hedera.ts  walrus.ts  worldid.ts  agent.ts  ai-parse.ts
-components/bridge/      the 6-step wizard + steps
+  sui.ts  walrus.ts  worldid.ts  agent.ts  ai-parse.ts
+components/              Privy wallet + the 6-step wizard + dashboard
 ```
 
-Secrets stay server-side (Route Handlers only). The wizard holds the in-progress position and
-persists it to `sessionStorage` so the **dashboard** can render the position + audit trail.
+Secrets stay server-side (Route Handlers only). The wizard persists the position to
+`sessionStorage` so the **dashboard** renders it with the full Suiscan-verifiable audit trail.
 
 Built with [Claude Code](https://claude.com/claude-code).

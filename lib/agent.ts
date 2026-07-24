@@ -1,20 +1,19 @@
 import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
-import { scheduleUsdcDisbursement } from "./hedera";
+import { disburse } from "./sui";
 import type { Disbursement, KycResult } from "./types";
 
 /**
  * The treasury AI agent.
  *
  * Given a collateral position + a World-ID-verified unique human, the agent
- * decides whether to release liquidity and then EXECUTES the payment itself as
- * a Hedera Scheduled Transaction (USDC via HTS). This is the pattern the Hedera
- * Agent Kit formalizes — an LLM reasoning over state, then acting on Hedera —
- * and it only ever acts on behalf of a verified human (the World AgentKit
- * "tell a bot from a human-backed agent" requirement).
+ * decides whether to release liquidity and then EXECUTES it on Sui — recording
+ * the draw on the CollateralVault (lock_and_draw) and transferring stablecoin —
+ * in a single programmable transaction. It only ever acts on behalf of a
+ * verified human (the World AgentKit "human-backed agent" requirement).
  *
- * The reasoning runs on Claude (structured output). Without a key it falls back
- * to a deterministic policy so the demo still executes end-to-end.
+ * Reasoning runs on Claude (structured output). Without a key it falls back to
+ * a deterministic policy so the demo still executes end-to-end.
  */
 
 type AgentInput = {
@@ -22,8 +21,8 @@ type AgentInput = {
   collateralPct: number; // fraction of equity locked (0..1)
   drawAmount: number; // requested USDC
   kyc: KycResult;
-  accountId: string;
-  tokenId: string;
+  accountId: string; // Sui address
+  vaultId: string;
 };
 
 type Decision = { approve: boolean; rationale: string; maxDraw: number };
@@ -42,7 +41,6 @@ const DECISION_SCHEMA = {
 async function decide(input: AgentInput): Promise<Decision> {
   const lockedEquity = input.vpt * input.collateralPct;
   const ltv = lockedEquity > 0 ? input.drawAmount / lockedEquity : Infinity;
-  // Policy ceiling: never lend beyond 70% LTV against the locked equity.
   const maxDraw = Math.floor(lockedEquity * 0.7);
 
   if (!process.env.ANTHROPIC_API_KEY) {
@@ -52,7 +50,7 @@ async function decide(input: AgentInput): Promise<Decision> {
       maxDraw,
       rationale: approve
         ? `Approved: borrower is a World-ID-verified unique human in ${input.kyc.jurisdiction ?? "PT"}; requested €${input.drawAmount.toLocaleString()} is ${(ltv * 100).toFixed(0)}% LTV against €${lockedEquity.toLocaleString()} locked equity, within the 70% policy.`
-        : `Declined: ${!input.kyc.verified ? "KYC not verified" : `€${input.drawAmount.toLocaleString()} exceeds the ${(0.7 * 100).toFixed(0)}% LTV cap of €${maxDraw.toLocaleString()}`}.`,
+        : `Declined: ${!input.kyc.verified ? "KYC not verified" : `€${input.drawAmount.toLocaleString()} exceeds the 70% LTV cap of €${maxDraw.toLocaleString()}`}.`,
     };
   }
 
@@ -62,7 +60,7 @@ async function decide(input: AgentInput): Promise<Decision> {
     max_tokens: 800,
     output_config: { format: { type: "json_schema", schema: DECISION_SCHEMA } },
     system:
-      "You are the treasury risk agent for a real-estate bridge-liquidity protocol. " +
+      "You are the treasury risk agent for a real-estate bridge-liquidity protocol on Sui. " +
       "You release stablecoin liquidity against tokenized home equity. Only approve when the borrower is a verified unique human (World ID) and the requested draw stays within 70% loan-to-value of the locked equity. Be concise.",
     messages: [
       {
@@ -75,7 +73,7 @@ async function decide(input: AgentInput): Promise<Decision> {
           lockedEquityEur: lockedEquity,
           requestedDrawUsdc: input.drawAmount,
           impliedLtv: ltv,
-          houseTokenId: input.tokenId,
+          vaultId: input.vaultId,
         }),
       },
     ],
@@ -91,26 +89,28 @@ export async function runTreasuryAgent(input: AgentInput): Promise<Disbursement 
   if (!decision.approve) {
     return {
       approved: false,
-      scheduleId: "",
-      transactionId: "",
+      digest: "",
+      asset: "USDC",
       amountUsdc: input.drawAmount,
-      status: "scheduled",
+      status: "declined",
       agentRationale: decision.rationale,
     };
   }
 
-  // Agent executes the payment on Hedera as a Scheduled Transaction.
-  const sched = await scheduleUsdcDisbursement({
-    toAccountId: input.accountId,
-    amountUsdc: input.drawAmount,
+  // Agent executes the payment on Sui: record the draw on-chain + transfer stablecoin.
+  const paid = await disburse({
+    vaultId: input.vaultId,
+    to: input.accountId,
+    pctBps: Math.round(input.collateralPct * 10000),
+    drawUsdc: input.drawAmount,
   });
 
   return {
     approved: true,
-    scheduleId: sched.scheduleId,
-    transactionId: sched.transactionId,
+    digest: paid.digest,
+    asset: paid.asset,
     amountUsdc: input.drawAmount,
-    status: sched.demo ? "scheduled" : "executed",
+    status: "executed",
     agentRationale: decision.rationale,
   };
 }

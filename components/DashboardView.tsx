@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { Locale } from "@/lib/i18n";
 import type { BridgeSession } from "@/lib/types";
-import { hashscanToken, hashscanTopic, hashscanTx } from "@/lib/types";
+import { suiscanCoin, suiscanObject, suiscanTx, onChain } from "@/lib/types";
 
 export default function DashboardView({ lang }: { lang: Locale }) {
   const [session, setSession] = useState<BridgeSession | null>(null);
@@ -25,14 +25,14 @@ export default function DashboardView({ lang }: { lang: Locale }) {
         title: "Your bridge position", empty: "No active position yet.", start: "Start the bridge",
         property: "Property", token: "House token", collateral: "Collateral locked", drawn: "Liquidity drawn",
         status: "Status", active: "Active — repaid on sale", audit: "Audit trail",
-        walrus: "Documents (Walrus)", hcs: "Document hash (HCS)", kyc: "KYC (World ID)", schedule: "Disbursement (Scheduled tx)",
+        walrus: "Documents (Walrus)", anchor: "Doc hash (Sui)", kyc: "KYC (World ID)", coin: "HOUSE equity (Sui)", vault: "Collateral vault", pay: "Disbursement (Sui tx)",
         vpt: "VPT value", human: "Verified unique human",
       }
     : {
         title: "A sua posição-ponte", empty: "Ainda não há posição ativa.", start: "Iniciar a ponte",
         property: "Imóvel", token: "Token do imóvel", collateral: "Garantia bloqueada", drawn: "Liquidez levantada",
         status: "Estado", active: "Ativa — reembolsada na venda", audit: "Rasto de auditoria",
-        walrus: "Documentos (Walrus)", hcs: "Hash do documento (HCS)", kyc: "KYC (World ID)", schedule: "Pagamento (Transação agendada)",
+        walrus: "Documentos (Walrus)", anchor: "Hash do doc (Sui)", kyc: "KYC (World ID)", coin: "Capital HOUSE (Sui)", vault: "Vault de garantia", pay: "Pagamento (Transação Sui)",
         vpt: "Valor VPT", human: "Humano único verificado",
       };
 
@@ -40,7 +40,7 @@ export default function DashboardView({ lang }: { lang: Locale }) {
 
   if (!ready) return <div className="mx-auto max-w-5xl px-4 py-14" />;
 
-  const hasPosition = session?.disbursement?.scheduleId || session?.token;
+  const hasPosition = session?.disbursement?.digest || session?.token;
 
   if (!hasPosition) {
     return (
@@ -55,7 +55,6 @@ export default function DashboardView({ lang }: { lang: Locale }) {
   }
 
   const s = session!;
-  const isDemo = (v?: string) => !v || v.startsWith("demo") || v.startsWith("0.0.9") || v.startsWith("0.0.8") || v.startsWith("0.0.7");
 
   const stat = (label: string, value: string, accent = false) => (
     <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200/70 dark:bg-[var(--color-card)] dark:ring-slate-700">
@@ -96,10 +95,11 @@ export default function DashboardView({ lang }: { lang: Locale }) {
         <h2 className="mb-2 text-lg font-bold text-slate-800 dark:text-slate-100">{t.audit}</h2>
         <div>
           {s.storage && auditRow(t.walrus, s.storage.blobId)}
-          {s.storage && auditRow(t.hcs, `${s.storage.hcsTopicId} · #${s.storage.hcsSequenceNumber}`, isDemo(s.storage.hcsTopicId) ? undefined : hashscanTopic(s.storage.hcsTopicId))}
+          {s.storage && auditRow(t.anchor, s.storage.anchorDigest, onChain(s.storage.anchorDigest) ? suiscanTx(s.storage.anchorDigest) : undefined)}
           {s.kyc && auditRow(t.kyc, `${t.human} · 🇵🇹 ${s.kyc.jurisdiction ?? "PT"}`)}
-          {s.token && auditRow(t.token, s.token.tokenId, isDemo(s.token.tokenId) ? undefined : hashscanToken(s.token.tokenId))}
-          {s.disbursement?.scheduleId && auditRow(t.schedule, s.disbursement.scheduleId, isDemo(s.disbursement.transactionId) ? undefined : hashscanTx(s.disbursement.transactionId))}
+          {s.token && auditRow(t.coin, s.token.coinType, onChain(s.token.coinType) ? suiscanCoin(s.token.coinType) : undefined)}
+          {s.token?.vaultId && auditRow(t.vault, s.token.vaultId, onChain(s.token.vaultId) ? suiscanObject(s.token.vaultId) : undefined)}
+          {s.disbursement?.digest && auditRow(t.pay, s.disbursement.digest, onChain(s.disbursement.digest) ? suiscanTx(s.disbursement.digest) : undefined)}
         </div>
         {s.disbursement?.agentRationale && (
           <p className="mt-4 rounded-xl border border-[var(--color-border)] bg-stone-50/60 p-3 text-sm text-slate-600 dark:bg-slate-800/40 dark:text-slate-300">

@@ -1,4 +1,4 @@
-/** Shared domain types for the bridge flow. */
+/** Shared domain types for the bridge flow (Sui settlement). */
 
 /** Fields the AI extracts from the caderneta predial + ID. */
 export type PropertyData = {
@@ -12,13 +12,12 @@ export type PropertyData = {
   confidence?: number; // 0..1 model confidence
 };
 
-/** Result of encrypting + storing a document set on Walrus (via Seal). */
+/** Result of encrypting + storing a document set on Walrus, anchored on Sui. */
 export type StorageResult = {
   blobId: string; // Walrus blob id
   sealed: boolean; // encrypted with Seal
-  sha256: string; // hash anchored on HCS
-  hcsTopicId: string; // Hedera Consensus Service topic
-  hcsSequenceNumber: number; // message sequence in that topic
+  sha256: string; // hash anchored on Sui
+  anchorDigest: string; // Sui tx digest of the DocumentAnchored event
 };
 
 /** World ID verification result (unique human + jurisdiction attributes). */
@@ -29,27 +28,27 @@ export type KycResult = {
   verificationLevel?: string; // "orb" | "device"
 };
 
-/** HTS fungible token minted to represent the house equity. */
+/** HOUSE fungible equity minted on Sui + its CollateralVault object. */
 export type HouseToken = {
-  tokenId: string; // 0.0.x
-  name: string;
+  coinType: string; // 0x…::house::HOUSE
+  vaultId: string; // shared CollateralVault object id
   symbol: string;
   totalSupply: number; // = VPT in whole EUR
-  decimals: number;
+  digest: string; // tokenize tx digest
 };
 
-/** The disbursement executed by the treasury AI agent. */
+/** The disbursement executed by the treasury AI agent on Sui. */
 export type Disbursement = {
-  scheduleId: string; // Hedera Scheduled Transaction id
-  transactionId: string;
+  digest: string; // Sui tx digest
+  asset: "USDC" | "SUI";
   amountUsdc: number;
-  status: "scheduled" | "executed";
+  status: "executed" | "declined";
   agentRationale: string; // why the agent released funds
 };
 
 /** The full in-progress bridge session held client-side across the wizard. */
 export type BridgeSession = {
-  accountId?: string;
+  accountId?: string; // Sui address (0x…)
   property?: PropertyData;
   storage?: StorageResult;
   kyc?: KycResult;
@@ -59,12 +58,19 @@ export type BridgeSession = {
   disbursement?: Disbursement;
 };
 
-export function hashscanTx(txId: string, network = "testnet") {
-  return `https://hashscan.io/${network}/transaction/${encodeURIComponent(txId)}`;
+// ── Suiscan explorer links (testnet) ─────────────────────────────────
+const NET = "testnet";
+const isReal = (v?: string) => Boolean(v && v.startsWith("0x")) || Boolean(v && /^[1-9A-HJ-NP-Za-km-z]{40,}$/.test(v));
+export function suiscanTx(digest: string, net = NET) {
+  return `https://suiscan.xyz/${net}/tx/${digest}`;
 }
-export function hashscanToken(tokenId: string, network = "testnet") {
-  return `https://hashscan.io/${network}/token/${tokenId}`;
+export function suiscanObject(id: string, net = NET) {
+  return `https://suiscan.xyz/${net}/object/${id}`;
 }
-export function hashscanTopic(topicId: string, network = "testnet") {
-  return `https://hashscan.io/${network}/topic/${topicId}`;
+export function suiscanCoin(coinType: string, net = NET) {
+  return `https://suiscan.xyz/${net}/coin/${encodeURIComponent(coinType)}`;
+}
+/** True when a value looks like a real on-chain id/digest (not a demo placeholder). */
+export function onChain(v?: string): boolean {
+  return isReal(v) && !String(v).startsWith("demo");
 }

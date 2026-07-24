@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import type { StepProps } from "../BridgeWizard";
 import type { PropertyData, StorageResult } from "@/lib/types";
-import { hashscanTopic } from "@/lib/types";
+import { suiscanTx, onChain } from "@/lib/types";
 import { StepHeading, Card, PrimaryButton, SecondaryButton, Badge, Spinner, ProofRow } from "../ui";
 
 export default function StepDocuments({ lang, session, patch, next, back, canBack }: StepProps) {
@@ -24,7 +24,7 @@ export default function StepDocuments({ lang, session, patch, next, back, canBac
         drop: "Click to choose files (PDF or photo)", parse: "Extract with AI", parsing: "Reading documents…",
         extracted: "Extracted", demoNote: "Demo data (no AI key configured)", seal: "Seal & store", sealing: "Encrypting & storing…",
         back: "Back", reparse: "Re-upload", cont: "Continue",
-        storedTitle: "Encrypted & anchored", walrus: "Walrus blob", hcs: "HCS audit", sealBadge: "Seal-encrypted", aesBadge: "AES-encrypted",
+        storedTitle: "Encrypted & anchored", walrus: "Walrus blob", anchor: "Sui anchor", sealBadge: "Seal-encrypted", aesBadge: "AES-encrypted",
         f: { artigoMatricial: "Tax article", vpt: "VPT value (€)", morada: "Address", freguesia: "Parish", concelho: "Municipality", proprietario: "Owner", fracao: "Fraction" },
         err: "Couldn't read the documents. Try again.", storeErr: "Storage failed. Try again.",
       }
@@ -34,7 +34,7 @@ export default function StepDocuments({ lang, session, patch, next, back, canBac
         drop: "Clique para escolher ficheiros (PDF ou foto)", parse: "Extrair com IA", parsing: "A ler os documentos…",
         extracted: "Extraído", demoNote: "Dados demo (sem chave de IA)", seal: "Selar & guardar", sealing: "A cifrar e guardar…",
         back: "Voltar", reparse: "Recarregar", cont: "Continuar",
-        storedTitle: "Cifrado & ancorado", walrus: "Blob Walrus", hcs: "Auditoria HCS", sealBadge: "Cifrado com Seal", aesBadge: "Cifrado (AES)",
+        storedTitle: "Cifrado & ancorado", walrus: "Blob Walrus", anchor: "Âncora Sui", sealBadge: "Cifrado com Seal", aesBadge: "Cifrado (AES)",
         f: { artigoMatricial: "Artigo matricial", vpt: "Valor VPT (€)", morada: "Morada", freguesia: "Freguesia", concelho: "Concelho", proprietario: "Proprietário", fracao: "Fração" },
         err: "Não foi possível ler os documentos. Tente novamente.", storeErr: "Falha ao guardar. Tente novamente.",
       };
@@ -145,9 +145,9 @@ export default function StepDocuments({ lang, session, patch, next, back, canBac
                 </div>
                 <ProofRow label={t.walrus} value={storage.blobId} />
                 <ProofRow
-                  label={t.hcs}
-                  value={`${storage.hcsTopicId} · #${storage.hcsSequenceNumber}`}
-                  href={storeDemo ? undefined : hashscanTopic(storage.hcsTopicId)}
+                  label={t.anchor}
+                  value={storage.anchorDigest}
+                  href={onChain(storage.anchorDigest) ? suiscanTx(storage.anchorDigest) : undefined}
                 />
                 <ProofRow label="SHA-256" value={storage.sha256.slice(0, 24) + "…"} />
               </div>

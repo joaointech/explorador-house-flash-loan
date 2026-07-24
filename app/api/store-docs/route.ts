@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { storeEncryptedDocuments } from "@/lib/walrus";
-import { anchorDocumentHash } from "@/lib/hedera";
+import { anchorDocument } from "@/lib/sui";
 import type { StorageResult } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -21,15 +21,14 @@ export async function POST(req: NextRequest) {
     // 1) encrypt (Seal/AES) + upload to Walrus
     const stored = await storeEncryptedDocuments(bytes);
 
-    // 2) anchor the document hash on Hedera HCS (immutable audit trail)
-    const anchor = await anchorDocumentHash(stored.sha256, `caderneta:${article}`);
+    // 2) anchor the document hash on Sui (immutable DocumentAnchored event)
+    const anchor = await anchorDocument({ article, docHashHex: stored.sha256 });
 
     const result: StorageResult = {
       blobId: stored.blobId,
       sealed: stored.sealed,
       sha256: stored.sha256,
-      hcsTopicId: anchor.topicId,
-      hcsSequenceNumber: anchor.sequenceNumber,
+      anchorDigest: anchor.digest,
     };
     return NextResponse.json({ storage: result, demo: stored.demo || anchor.demo });
   } catch (e: unknown) {

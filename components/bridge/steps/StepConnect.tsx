@@ -5,10 +5,11 @@ import { useWallet } from "@/components/WalletProvider";
 import type { StepProps } from "../BridgeWizard";
 import { StepHeading, Card, PrimaryButton, SecondaryButton, ProofRow, Badge } from "../ui";
 
-export default function StepConnect({ lang, session, patch, next }: StepProps) {
-  const { accountId, mode, connecting, error, connectHashPack, connectDemo } = useWallet();
+const short = (a: string) => (a.length > 18 ? `${a.slice(0, 10)}…${a.slice(-6)}` : a);
 
-  // Mirror the wallet account into the bridge session.
+export default function StepConnect({ lang, session, patch, next }: StepProps) {
+  const { accountId, mode, connecting, error, connectPrivy, connectDemo } = useWallet();
+
   useEffect(() => {
     if (accountId && accountId !== session.accountId) patch({ accountId });
   }, [accountId, session.accountId, patch]);
@@ -17,25 +18,25 @@ export default function StepConnect({ lang, session, patch, next }: StepProps) {
     lang === "en"
       ? {
           kicker: "Step 1",
-          title: "Connect your Hedera wallet",
-          sub: "We use your Hedera account to receive the house-equity token and the USDC you draw. Connect HashPack, or use a demo account to try the full flow.",
-          hashpack: "Connect HashPack",
-          demo: "Use demo account",
-          connected: "Wallet connected",
-          account: "Account",
+          title: "Sign in to get your Sui wallet",
+          sub: "No extension, no seed phrase — sign in with email or a social account and Privy provisions a non-custodial Sui wallet that receives your house token and the USDC you draw.",
+          signin: "Sign in with Privy",
+          demo: "Use demo wallet",
+          connected: "Wallet ready",
+          account: "Sui address",
           cont: "Continue",
-          err: "Couldn't connect. Try the demo account instead.",
+          connecting: "Connecting…",
         }
       : {
           kicker: "Passo 1",
-          title: "Ligue a sua carteira Hedera",
-          sub: "Usamos a sua conta Hedera para receber o token do imóvel e o USDC que levantar. Ligue o HashPack, ou use uma conta demo para experimentar todo o fluxo.",
-          hashpack: "Ligar HashPack",
-          demo: "Usar conta demo",
-          connected: "Carteira ligada",
-          account: "Conta",
+          title: "Entre para obter a sua carteira Sui",
+          sub: "Sem extensão, sem seed phrase — entre com email ou uma conta social e a Privy cria uma carteira Sui não-custodial que recebe o token do imóvel e o USDC que levantar.",
+          signin: "Entrar com Privy",
+          demo: "Usar carteira demo",
+          connected: "Carteira pronta",
+          account: "Endereço Sui",
           cont: "Continuar",
-          err: "Não foi possível ligar. Experimente a conta demo.",
+          connecting: "A ligar…",
         };
 
   return (
@@ -45,7 +46,7 @@ export default function StepConnect({ lang, session, patch, next }: StepProps) {
         {accountId ? (
           <div className="space-y-4">
             <Badge tone="green">● {t.connected}</Badge>
-            <ProofRow label={t.account} value={`${accountId}${mode === "demo" ? "  (demo)" : ""}`} />
+            <ProofRow label={t.account} value={`${short(accountId)}${mode === "demo" ? "  (demo)" : ""}`} />
             <div className="pt-2">
               <PrimaryButton onClick={next}>{t.cont} →</PrimaryButton>
             </div>
@@ -53,17 +54,12 @@ export default function StepConnect({ lang, session, patch, next }: StepProps) {
         ) : (
           <div className="space-y-3">
             <div className="flex flex-wrap gap-3">
-              <PrimaryButton onClick={connectHashPack} disabled={connecting}>
-                🔷 {t.hashpack}
+              <PrimaryButton onClick={connectPrivy} disabled={connecting}>
+                {connecting ? t.connecting : `🔐 ${t.signin}`}
               </PrimaryButton>
               <SecondaryButton onClick={connectDemo}>🧪 {t.demo}</SecondaryButton>
             </div>
-            {error && (
-              <div className="space-y-1">
-                <p className="text-sm text-[var(--color-danger)]">{t.err}</p>
-                <p className="break-words font-mono text-xs text-slate-500 dark:text-slate-400">{error}</p>
-              </div>
-            )}
+            {error && <p className="break-words font-mono text-xs text-[var(--color-danger)]">{error}</p>}
           </div>
         )}
       </Card>

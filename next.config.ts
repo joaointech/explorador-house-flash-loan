@@ -16,9 +16,9 @@ const nextConfig: NextConfig = {
     ];
   },
 
-  // The Hedera/Sui/Walrus SDKs pull in some node-targeted deps; keep them
+  // The Sui/Walrus/Seal SDKs pull in some node-targeted deps; keep them
   // external to the server bundle so Next doesn't try to bundle native bits.
-  serverExternalPackages: ["@hashgraph/sdk", "hedera-agent-kit", "@mysten/walrus"],
+  serverExternalPackages: ["@mysten/sui", "@mysten/walrus", "@mysten/seal"],
 };
 
 export default nextConfig;

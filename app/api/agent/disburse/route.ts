@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
       drawAmount: Number(body.drawAmount) || 0,
       kyc,
       accountId: String(body.accountId ?? ""),
-      tokenId: String(body.tokenId ?? ""),
+      vaultId: String(body.vaultId ?? ""),
     });
 
     return NextResponse.json({ disbursement: result });

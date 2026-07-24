@@ -1,36 +1,37 @@
 "use client";
 
 /**
- * Hedera wallet context.
+ * Wallet context — Privy embedded **Sui** wallet.
  *
- * Two ways to obtain the user's account id:
- *  1. Real HashPack via Hedera WalletConnect (DAppConnector) — the authentic
- *     path. Requires a WalletConnect projectId + a paired HashPack wallet.
- *  2. Demo account — a testnet account whose key the server holds, so the whole
- *     flow (associate → receive tokens → receive USDC) runs end-to-end during a
- *     pitch without a live mobile pairing. Enabled when
- *     NEXT_PUBLIC_DEMO_ACCOUNT_ID is set.
+ * Login is email / social / passkey (no extension); Privy provisions a
+ * non-custodial Sui embedded wallet (`chainType: 'sui'`). We expose the Sui
+ * address as `accountId` behind a small `useWallet()` context so the wizard
+ * steps stay wallet-agnostic.
  *
- * The connector is imported lazily inside connect() so SSR/build never touches
- * the WalletConnect runtime.
+ * When NEXT_PUBLIC_PRIVY_APP_ID isn't set we mount a demo-only provider so the
+ * whole flow still runs in a pitch.
  */
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { PrivyProvider, usePrivy } from "@privy-io/react-auth";
+// Sui lives under Privy's "extended chains" surface.
+import { useCreateWallet } from "@privy-io/react-auth/extended-chains";
 
-type WalletMode = "walletconnect" | "demo" | null;
+type WalletMode = "privy" | "demo" | null;
 
 type WalletCtx = {
   accountId: string | null;
   mode: WalletMode;
   connecting: boolean;
+  ready: boolean;
   error: string | null;
-  connectHashPack: () => Promise<void>;
+  connectPrivy: () => Promise<void>;
   connectDemo: () => void;
   disconnect: () => void;
 };
 
 const Ctx = createContext<WalletCtx | null>(null);
-const STORAGE_KEY = "bridge.wallet";
+const DEMO_SUI = "0x00000000000000000000000000000000000000000000000000000000dec0ded0";
 
 export function useWallet(): WalletCtx {
   const ctx = useContext(Ctx);
@@ -38,107 +39,113 @@ export function useWallet(): WalletCtx {
   return ctx;
 }
 
-export function WalletProvider({ children }: { children: React.ReactNode }) {
-  const [accountId, setAccountId] = useState<string | null>(null);
-  const [mode, setMode] = useState<WalletMode>(null);
+// ── Privy-backed implementation ──────────────────────────────────────
+function PrivyBridge({ children }: { children: React.ReactNode }) {
+  const { ready, authenticated, user, login, logout } = usePrivy();
+  const { createWallet } = useCreateWallet();
   const [connecting, setConnecting] = useState(false);
+  const [wantWallet, setWantWallet] = useState(false);
+  const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [demoAcc, setDemoAcc] = useState<string | null>(null);
 
-  // Restore a prior session.
+  // Find the Sui embedded wallet on the Privy user.
+  const suiWallet = (user?.linkedAccounts ?? []).find(
+    (a) => a.type === "wallet" && (a as { chainType?: string }).chainType === "sui",
+  ) as { address?: string } | undefined;
+  const accountId = demoAcc ?? suiWallet?.address ?? null;
+
+  // Once authenticated with intent, ensure a Sui wallet exists.
   useEffect(() => {
-    try {
-      const raw = sessionStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const { accountId, mode } = JSON.parse(raw);
-        setAccountId(accountId);
-        setMode(mode);
+    (async () => {
+      if (!wantWallet || !authenticated || suiWallet || creating) return;
+      setCreating(true);
+      try {
+        await createWallet({ chainType: "sui" });
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "wallet_create_failed");
+      } finally {
+        setCreating(false);
+        setConnecting(false);
+        setWantWallet(false);
       }
-    } catch {
-      /* ignore */
-    }
-  }, []);
+    })();
+  }, [wantWallet, authenticated, suiWallet, creating, createWallet]);
 
-  const persist = useCallback((acc: string, m: WalletMode) => {
-    setAccountId(acc);
-    setMode(m);
-    try {
-      sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ accountId: acc, mode: m }));
-    } catch {
-      /* ignore */
-    }
-  }, []);
+  useEffect(() => {
+    if (suiWallet?.address) setConnecting(false);
+  }, [suiWallet?.address]);
 
-  const connectHashPack = useCallback(async () => {
-    setConnecting(true);
+  const connectPrivy = useCallback(async () => {
     setError(null);
-    const log = (...a: unknown[]) => console.log("[wallet]", ...a);
+    setDemoAcc(null);
+    setConnecting(true);
+    setWantWallet(true);
     try {
-      const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID;
-      log("projectId present?", Boolean(projectId), projectId ? `(${projectId.slice(0, 6)}…)` : "");
-      if (!projectId) throw new Error("missing_projectid — set NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID in .env.local (free at cloud.reown.com), then restart dev");
-
-      log("importing @hashgraph/hedera-wallet-connect…");
-      const { DAppConnector, HederaJsonRpcMethod, HederaSessionEvent, HederaChainId } = await import(
-        "@hashgraph/hedera-wallet-connect"
-      );
-      const { LedgerId } = await import("@hashgraph/sdk");
-      log("SDK loaded, building DAppConnector");
-
-      const connector = new DAppConnector(
-        {
-          name: "explorador Bridge",
-          description: "Home-equity bridge liquidity on Hedera",
-          url: typeof window !== "undefined" ? window.location.origin : "https://bridge.explorador.pt",
-          icons: [typeof window !== "undefined" ? `${window.location.origin}/icon-192.png` : ""],
-        },
-        LedgerId.TESTNET,
-        projectId,
-        Object.values(HederaJsonRpcMethod),
-        [HederaSessionEvent.ChainChanged, HederaSessionEvent.AccountsChanged],
-        [HederaChainId.Testnet],
-      );
-
-      log("connector.init()…");
-      await connector.init({ logger: "error" });
-      log("opening WalletConnect modal — approve in HashPack");
-      const session = await connector.openModal();
-      log("session", session);
-      const acc = session.namespaces?.hedera?.accounts?.[0]?.split(":").pop();
-      log("resolved account", acc);
-      if (!acc) throw new Error("no_account — modal returned no Hedera account");
-      persist(acc, "walletconnect");
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : String(e);
-      console.error("[wallet] connect failed:", e);
-      setError(msg);
-    } finally {
+      if (!authenticated) login();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "login_failed");
       setConnecting(false);
     }
-  }, [persist]);
+  }, [authenticated, login]);
 
   const connectDemo = useCallback(() => {
-    const demo = process.env.NEXT_PUBLIC_DEMO_ACCOUNT_ID;
-    if (!demo) {
-      setError("missing_demo_account");
-      return;
-    }
-    persist(demo, "demo");
-  }, [persist]);
-
-  const disconnect = useCallback(() => {
-    setAccountId(null);
-    setMode(null);
-    try {
-      sessionStorage.removeItem(STORAGE_KEY);
-    } catch {
-      /* ignore */
-    }
+    setError(null);
+    setDemoAcc(DEMO_SUI);
   }, []);
 
+  const disconnect = useCallback(() => {
+    setDemoAcc(null);
+    if (authenticated) logout();
+  }, [authenticated, logout]);
+
   const value = useMemo<WalletCtx>(
-    () => ({ accountId, mode, connecting, error, connectHashPack, connectDemo, disconnect }),
-    [accountId, mode, connecting, error, connectHashPack, connectDemo, disconnect],
+    () => ({
+      accountId,
+      mode: demoAcc ? "demo" : suiWallet ? "privy" : null,
+      connecting: connecting || creating,
+      ready,
+      error,
+      connectPrivy,
+      connectDemo,
+      disconnect,
+    }),
+    [accountId, demoAcc, suiWallet, connecting, creating, ready, error, connectPrivy, connectDemo, disconnect],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
+}
+
+// ── Demo-only implementation (no Privy app configured) ───────────────
+function DemoOnlyProvider({ children }: { children: React.ReactNode }) {
+  const [accountId, setAccountId] = useState<string | null>(null);
+  const value = useMemo<WalletCtx>(
+    () => ({
+      accountId,
+      mode: accountId ? "demo" : null,
+      connecting: false,
+      ready: true,
+      error: accountId ? null : null,
+      connectPrivy: async () => setAccountId(DEMO_SUI),
+      connectDemo: () => setAccountId(DEMO_SUI),
+      disconnect: () => setAccountId(null),
+    }),
+    [accountId],
+  );
+  return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
+}
+
+export function WalletProvider({ children }: { children: React.ReactNode }) {
+  const appId = process.env.NEXT_PUBLIC_PRIVY_APP_ID;
+  if (!appId) return <DemoOnlyProvider>{children}</DemoOnlyProvider>;
+  return (
+    <PrivyProvider
+      appId={appId}
+      config={{
+        appearance: { theme: "light", accentColor: "#2563eb" },
+      }}
+    >
+      <PrivyBridge>{children}</PrivyBridge>
+    </PrivyProvider>
+  );
 }

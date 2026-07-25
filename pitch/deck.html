@@ -314,19 +314,19 @@
     </div>
   </section>
 
-  <!-- 4 THE GAP -->
+  <!-- 5 THE BLOCK -->
   <section class="slide dark">
-    <p class="kicker reveal">The gap we kept hitting</p>
-    <h2 class="reveal">People want to move up.<br><span class="accent">They physically can't.</span></h2>
+    <p class="kicker reveal">What we built to speed the market up</p>
+    <h2 class="reveal">If you already own a home,<br>you're <span class="accent">blocked.</span></h2>
     <div class="grid g3" style="margin-top:.5em">
-      <div class="card reveal"><h3>The trap</h3><p>To sign for a new home you owe the sinal, often 10 to 20%, right now. But your money is locked in the home you haven't sold yet.</p></div>
-      <div class="card reveal"><h3>The bank is too slow</h3><p>Bridge loans exist, but they are slow, buried in paperwork and often approved too late. So the deal dies.</p></div>
-      <div class="card reveal"><h3>The chain freezes</h3><p>One stuck seller blocks every buyer behind them. Properties stop circulating. That is the root of the crisis.</p></div>
+      <div class="card reveal"><h3>You need the sinal today</h3><p>To sign for the new home you owe 10 to 20% right now. But all your money is locked in the home you haven't sold yet.</p></div>
+      <div class="card reveal"><h3>The bank is too slow</h3><p>Bridge loans exist, but they're slow, buried in paperwork and often approved too late. So the deal dies.</p></div>
+      <div class="card reveal"><h3>The whole chain freezes</h3><p>One stuck seller blocks every buyer behind them. Homes stop circulating, and that's what keeps the market jammed.</p></div>
     </div>
-    <p class="reveal" style="margin-top:1.5em; font-size:1.2rem; color:#fff; font-weight:600">What if your home's equity became <span class="accent">spendable liquidity</span> in minutes?</p>
+    <p class="reveal" style="margin-top:1.5em; font-size:1.25rem; color:#fff; font-weight:600">So we built <span class="accent">explorador Bridge</span>: turn the home you're selling into spendable liquidity, in minutes.</p>
   </section>
 
-  <!-- 5 SOLUTION -->
+  <!-- 6 SOLUTION -->
   <section class="slide">
     <p class="kicker reveal">The solution, explorador Bridge</p>
     <h2 class="reveal">Collateralize the home you're selling. Draw the <span class="accent">sinal</span> today.</h2>
@@ -344,89 +344,21 @@
     </div>
   </section>
 
-  <!-- 6 BUILD -->
-  <section class="slide dark">
-    <p class="kicker reveal">How it's built, on Sui</p>
-    <div class="row" style="gap:44px; align-items:flex-start">
-      <div class="grow reveal">
-        <h2>A real on-chain credit rail,<br>not a demo.</h2>
-        <ul class="clean" style="margin-top:.3em">
-          <li>A published <strong>Move package</strong>: a HOUSE equity coin, a shared vault, and tokenize, draw and repay with a full event trail.</li>
-          <li>Our own stablecoin <strong>eUSD</strong>, because faucets can't hand out the thousands a real sinal needs. Payouts are full value.</li>
-          <li>Every settlement is one <strong>programmable transaction</strong>. Draw and repay each run atomically.</li>
-        </ul>
-      </div>
-      <div class="reveal" style="width:38%">
-        <h3 style="margin-bottom:.7em; color:rgba(255,255,255,.7); font-size:.78rem; letter-spacing:.16em; text-transform:uppercase">The stack</h3>
-        <span class="tech"><b>Sui</b> Move + eUSD</span>
-        <span class="tech"><b>Privy</b> Sui wallet</span>
-        <span class="tech"><b>Walrus + Seal</b> docs</span>
-        <span class="tech"><b>World ID</b> human</span>
-        <span class="tech"><b>Claude</b> parsing + agent</span>
-      </div>
+  <!-- 7 DEMO TIME -->
+  <section class="slide dark" style="align-items:center; justify-content:center; text-align:center">
+    <p class="kicker reveal">explorador Bridge</p>
+    <h1 class="reveal" style="font-size:clamp(3rem,9vw,6rem)">Demo <span class="glow">time.</span></h1>
+    <p class="reveal" style="margin-top:1.2rem; max-width:42ch; font-size:1.15rem; color:rgba(255,255,255,.72)">
+      Tokenize the house, draw the sinal in eUSD, repay and release the collateral. Every step a real transaction on Sui.
+    </p>
+    <div class="reveal" style="margin-top:2.2rem; display:flex; gap:12px; flex-wrap:wrap; justify-content:center">
+      <span class="pill"><span class="dot"></span> Live on Sui testnet</span>
+      <span class="pill">ethglobal.explorador.pt</span>
     </div>
-    <div class="logostrip reveal" style="margin-top:26px">
-      <span class="lbl">Built with</span>
+    <div class="logostrip reveal" style="margin-top:2.6rem; justify-content:center">
       <span class="logochip"><img src="assets/logos/sui.png" alt="Sui"></span>
       <span class="logochip"><img src="assets/logos/walrus.png" alt="Walrus"></span>
       <span class="logochip"><img src="assets/logos/world.png" alt="World ID"></span>
-    </div>
-    <p class="src reveal" style="margin-top:14px">Package, HOUSE coin, eUSD and every tokenize, draw and repay verified live on Sui testnet.</p>
-  </section>
-
-  <!-- 7 ARCHITECTURE -->
-  <section class="slide">
-    <p class="kicker reveal">How the system works</p>
-    <h2 class="reveal">From sign-in to repayment, <span class="accent">one flow.</span></h2>
-    <div class="pipe">
-      <div class="anode seq"><span class="b">01</span><h4>Sign in</h4><p>Email login, Sui wallet via Privy</p></div>
-      <div class="arr seq">→</div>
-      <div class="anode seq"><span class="b">02</span><h4>Upload documents</h4>
-        <div class="docs">
-          <span class="doc seq">CC identity</span>
-          <span class="doc seq">Registo Predial</span>
-          <span class="doc seq">Declaração IMI</span>
-        </div>
-      </div>
-      <div class="arr seq">→</div>
-      <div class="anode seq"><span class="b">03</span><h4>KYC</h4><p>World ID, unique human in PT</p></div>
-      <div class="arr seq">→</div>
-      <div class="anode seq"><span class="b">04</span><h4>Sign debt doc</h4><p>Legal acknowledgment, e-signed</p></div>
-      <div class="arr seq">→</div>
-      <div class="anode seq"><span class="b">05</span><h4>Tokenize</h4><p>HOUSE coins + vault</p></div>
-      <div class="arr seq">→</div>
-      <div class="anode seq"><span class="b">06</span><h4>Collateralize</h4><p>Lock equity on-chain</p></div>
-      <div class="arr seq">→</div>
-      <div class="anode seq"><span class="b">07</span><h4>Withdraw</h4><p>Draw eUSD at the pool's live rate</p></div>
-      <div class="arr seq">→</div>
-      <div class="anode hot seq"><span class="b">08</span><h4>Repay</h4><p>Principal + interest for days held</p></div>
-    </div>
-
-    <div class="lane">
-      <div class="svc2 seq" style="border-left-color:#2563eb"><h4>🗄️ Walrus + Seal</h4><p>Every document encrypted and stored off-chain, hash anchored on Sui.</p><div class="who">Powers steps 02 &amp; 04</div></div>
-      <div class="svc2 seq" style="border-left-color:#10b981"><h4>🌍 World ID</h4><p>Proof of a unique human, resident in Portugal, before any credit.</p><div class="who">Powers step 03</div></div>
-      <div class="svc2 seq" style="border-left-color:#6366f1"><h4>⛓️ Sui Move</h4><p>bridge::house + bridge::eusd. Mint, lock, draw and repay, all on-chain.</p><div class="who">Powers steps 05 to 08</div></div>
-      <div class="svc2 seq" style="border-left-color:#f59e0b"><h4>🏦 Treasury pool</h4><p>Our own money market. A shared Pool prices each draw by utilization; interest accrues by time held.</p><div class="who">Powers steps 06 to 08</div></div>
-    </div>
-
-    <div class="callout seq">
-      <div class="big">Pay by the day</div>
-      <p>No bank, no paperwork, no origination fee. A <strong>variable rate</strong> prices each draw and you pay interest only for the days you use it. That interest is the <strong>yield that funds the protocol</strong>.</p>
-    </div>
-  </section>
-
-  <!-- 8 WHY -->
-  <section class="slide">
-    <p class="kicker reveal">Why it matters</p>
-    <h2 class="reveal">Unlock the equity, and the <span class="accent">whole market moves again.</span></h2>
-    <div class="grid g3" style="margin-top:.5em">
-      <div class="card reveal"><h3>For the mover</h3><p>Sign for your dream home today instead of losing it while you wait to sell.</p></div>
-      <div class="card reveal"><h3>For the market</h3><p>Every unstuck seller frees the buyers behind them. Homes circulate and the crisis eases.</p></div>
-      <div class="card reveal"><h3>For explorador</h3><p>5,000 buyers already swipe on us. Bridge turns that audience into a full property and credit platform.</p></div>
-    </div>
-    <div class="row reveal" style="margin-top:2em; justify-content:space-between; align-items:center">
-      <p class="quote" style="font-size:clamp(1.4rem,2.8vw,2rem); max-width:20ch">From swiping a home<br>to <span class="accent">funding it.</span></p>
-      <div class="brand" style="margin:0"><img src="assets/explorador-mark.png" alt="explorador" style="filter:none"><div class="wm" style="color:var(--ink)">explorador<small style="color:var(--primary)">bridge · ETHGlobal Lisbon 2026</small></div></div>
     </div>
   </section>
 

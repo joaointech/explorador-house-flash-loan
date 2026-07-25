@@ -4,7 +4,6 @@ node_modules
 .env*
 *.log
 sui/build
-pitch
 README.md
 FEEDBACK.md
 DEMO.md

@@ -44,53 +44,33 @@ gcloud beta run domain-mappings describe \
   --domain "$DOMAIN" --project "$PROJECT" --region "$REGION" \
   --format=json > /tmp/dm.json
 
-python3 - "$DOMAIN" <<'PY' > /tmp/dm-records.tsv
-import json, sys
-domain = sys.argv[1]
+# Cloud Run returns the rrdata (and a relative name we ignore) — the record is
+# always for the mapped DOMAIN itself. Emit type<TAB>rrdata.
+python3 <<'PY' > /tmp/dm-records.tsv
+import json
 data = json.load(open("/tmp/dm.json"))
 for r in data.get("status", {}).get("resourceRecords") or []:
-    name = r.get("name") or domain
-    print(f"{name}\t{r['type']}\t{r['rrdata']}")
+    print(f"{r['type']}\t{r['rrdata']}")
 PY
 cat /tmp/dm-records.tsv
 
-echo "==> upserting DNS records into zone $ZONE"
-declare -A GROUPED
-while IFS=$'\t' read -r name type data; do
-  key="${name}.|${type}"
-  if [ -z "${GROUPED[$key]+x}" ]; then GROUPED[$key]="$data"; else GROUPED[$key]="${GROUPED[$key]}|$data"; fi
-done < /tmp/dm-records.tsv
-
-gcloud dns record-sets transaction abort --zone="$ZONE" --project="$PROJECT" >/dev/null 2>&1 || true
-gcloud dns record-sets transaction start --zone="$ZONE" --project="$PROJECT" >/dev/null
-
-CHANGED=0
-for key in "${!GROUPED[@]}"; do
-  name="${key%|*}"; type="${key#*|}"; values="${GROUPED[$key]}"
-  current="$(gcloud dns record-sets list --zone="$ZONE" --project="$PROJECT" \
-    --name="$name" --type="$type" --format='value(rrdatas)' 2>/dev/null || true)"
-  wanted="$(echo "$values" | tr '|' '\n' | sort | paste -sd';' -)"
-  current_sorted="$(echo "$current" | tr ',' '\n' | sort | paste -sd';' -)"
-  if [ "$current_sorted" = "$wanted" ]; then echo "    $name $type — already correct"; continue; fi
-  if [ -n "$current" ]; then
-    # shellcheck disable=SC2086
-    gcloud dns record-sets transaction remove --zone="$ZONE" --project="$PROJECT" \
-      --name="$name" --type="$type" --ttl=300 $(echo "$current" | tr ',' ' ') >/dev/null
+echo "==> upserting DNS records for ${DOMAIN}. into zone $ZONE"
+# One record set per type (rrdatas comma-joined). No bash-4 associative arrays,
+# so this runs on macOS's stock bash 3.2 too.
+fqdn="${DOMAIN}."
+cut -f1 /tmp/dm-records.tsv | sort -u | while IFS= read -r type; do
+  [ -z "$type" ] && continue
+  values="$(awk -F'\t' -v t="$type" '$1==t {print $2}' /tmp/dm-records.tsv | paste -sd, -)"
+  if gcloud dns record-sets describe "$fqdn" --type="$type" --zone="$ZONE" --project="$PROJECT" >/dev/null 2>&1; then
+    gcloud dns record-sets update "$fqdn" --type="$type" --ttl=300 --rrdatas="$values" \
+      --zone="$ZONE" --project="$PROJECT" >/dev/null
+    echo "    $fqdn $type — updated ($values)"
+  else
+    gcloud dns record-sets create "$fqdn" --type="$type" --ttl=300 --rrdatas="$values" \
+      --zone="$ZONE" --project="$PROJECT" >/dev/null
+    echo "    $fqdn $type — created ($values)"
   fi
-  # shellcheck disable=SC2086
-  gcloud dns record-sets transaction add --zone="$ZONE" --project="$PROJECT" \
-    --name="$name" --type="$type" --ttl=300 $(echo "$values" | tr '|' ' ') >/dev/null
-  echo "    $name $type — queued ($values)"
-  CHANGED=1
 done
-
-if [ "$CHANGED" = "1" ]; then
-  gcloud dns record-sets transaction execute --zone="$ZONE" --project="$PROJECT" >/dev/null
-  echo "    transaction executed"
-else
-  gcloud dns record-sets transaction abort --zone="$ZONE" --project="$PROJECT" >/dev/null
-  echo "    nothing to change"
-fi
 
 echo
 echo "==> mapping status (cert provisioning is async, 15-60 min)"

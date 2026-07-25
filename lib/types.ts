@@ -20,12 +20,49 @@ export type StorageResult = {
   anchorDigest: string; // Sui tx digest of the DocumentAnchored event
 };
 
-/** World ID verification result (unique human + jurisdiction attributes). */
+/** The two World ID credentials the KYC step collects. */
+export type WorldCredential = "identity" | "selfie";
+
+/** Actions registered in the Developer Portal — shared by client and server. */
+export const WORLD_ACTIONS: Record<WorldCredential, string> = {
+  identity: process.env.NEXT_PUBLIC_WORLD_ACTION_IDENTITY || "collateralize-house-identity",
+  selfie: process.env.NEXT_PUBLIC_WORLD_ACTION_SELFIE || "collateralize-house-selfie",
+};
+
+/**
+ * Identity Check predicates. We request the MINIMUM needed to establish eligibility
+ * for a Portuguese home-equity loan and nothing more — no full_name, no
+ * document_number, no date of birth. The response is a boolean, not these values.
+ * Country codes are ISO 3166-1 alpha-3.
+ */
+export const IDENTITY_ATTRIBUTES = [
+  { type: "minimum_age", value: 18 },
+  { type: "issuing_country", value: "PRT" },
+] as const;
+
+/**
+ * What the client holds after Identity Check alone — the first of the two World ID
+ * steps. Threaded (by `token`) into the second step, which folds Selfie Check into the
+ * same server-side session and returns the full `KycResult`.
+ */
+export type IdentityResult = {
+  token: string;
+  identityAttested: boolean;
+  identityNullifier: string;
+  sandbox?: boolean;
+};
+
+/**
+ * What the client holds after both World ID checks. `token` is an opaque lookup
+ * key for a server-side session — never a claim the client can forge. The nullifiers
+ * are display-only; the server reads its own copy when money moves.
+ */
 export type KycResult = {
-  verified: boolean;
-  nullifierHash: string;
-  jurisdiction?: string; // e.g. "PT"
-  verificationLevel?: string; // "orb" | "device"
+  token: string;
+  identityAttested: boolean;
+  selfieNullifier: string;
+  identityNullifier: string;
+  sandbox?: boolean;
 };
 
 /** HOUSE fungible equity minted on Sui + its CollateralVault object. */
@@ -46,15 +83,31 @@ export type Disbursement = {
   agentRationale: string; // why the agent released funds
 };
 
+/**
+ * The borrower's signed Termo de Reconhecimento e Confissão de Dívida (art. 458.º
+ * Código Civil). Client-safe subset of `SignedAgreement` in lib/agreement.ts — no
+ * raw phone number, no server-only fields.
+ */
+export type AgreementSignature = {
+  id: string;
+  docSha256: string;
+  signedAt: number;
+  amountEur: number;
+  signerNome: string;
+  anchorDigest?: string;
+};
+
 /** The full in-progress bridge session held client-side across the wizard. */
 export type BridgeSession = {
   accountId?: string; // Sui address (0x…)
   property?: PropertyData;
   storage?: StorageResult;
+  identity?: IdentityResult;
   kyc?: KycResult;
   token?: HouseToken;
   collateralPct?: number; // fraction of equity locked
   drawAmount?: number; // requested USDC
+  agreement?: AgreementSignature;
   disbursement?: Disbursement;
 };
 

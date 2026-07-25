@@ -20,6 +20,13 @@ export type LoanEntry = {
   coinType: string;
   disburseDigest: string;
   repayDigest?: string;
+  // The signed Termo de Reconhecimento e Confissão de Dívida bound at origination.
+  agreementId?: string;
+  agreementSha256?: string;
+  // World ID nullifiers, bound at origination. The selfie one is the sybil key and
+  // the continuity check for any later action on this loan.
+  selfieNullifier?: string;
+  identityNullifier?: string;
   status: "active" | "repaid";
   createdAt: number;
 };

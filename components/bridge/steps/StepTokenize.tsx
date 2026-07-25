@@ -16,14 +16,14 @@ export default function StepTokenize({ lang, session, patch, next, back, canBack
 
   const t = lang === "en"
     ? {
-        kicker: "Step 4", title: "Tokenize the house",
+        kicker: "Step 5", title: "Tokenize the house",
         sub: "Your property is minted as HOUSE equity coins on Sui (a published Move package) — 1 HOUSE = €1 of VPT — held in a shared CollateralVault object.",
         preview: "Coins to mint", eq: "= €{v} equity", mint: "Mint on Sui", minting: "Minting on Sui…",
         minted: "Minted", coin: "Coin type", vault: "Vault object", tx: "Mint tx", cont: "Continue", back: "Back",
         err: "Minting failed. Try again.",
       }
     : {
-        kicker: "Passo 4", title: "Tokenizar o imóvel",
+        kicker: "Passo 5", title: "Tokenizar o imóvel",
         sub: "O seu imóvel é emitido como moedas de capital HOUSE na Sui (um pacote Move publicado) — 1 HOUSE = €1 de VPT — guardadas num objeto CollateralVault partilhado.",
         preview: "Moedas a emitir", eq: "= €{v} de capital", mint: "Emitir na Sui", minting: "A emitir na Sui…",
         minted: "Emitido", coin: "Tipo de moeda", vault: "Objeto vault", tx: "Transação", cont: "Continuar", back: "Voltar",

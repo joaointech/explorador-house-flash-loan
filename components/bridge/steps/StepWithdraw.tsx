@@ -12,14 +12,14 @@ export default function StepWithdraw({ lang, session, back, canBack }: StepProps
 
   const t = lang === "en"
     ? {
-        kicker: "Step 6", title: "Withdraw your liquidity",
+        kicker: "Step 8", title: "Withdraw your liquidity",
         sub: "Your USDC has been disbursed to your account. Withdraw it to fund the new home's CPCV signal.",
         available: "Available to withdraw", to: "To account", withdraw: "Withdraw USDC", withdrawing: "Withdrawing…",
         done: "Withdrawn — you're ready for the CPCV", terms: "Repaid automatically when your old house sells; the house tokens are then released.",
         dash: "Go to dashboard", back: "Back",
       }
     : {
-        kicker: "Passo 6", title: "Levante a sua liquidez",
+        kicker: "Passo 8", title: "Levante a sua liquidez",
         sub: "O seu USDC foi transferido para a sua conta. Levante-o para o sinal do CPCV da casa nova.",
         available: "Disponível para levantar", to: "Para a conta", withdraw: "Levantar USDC", withdrawing: "A levantar…",
         done: "Levantado — está pronto para o CPCV", terms: "Reembolsado automaticamente quando a casa antiga vender; os tokens do imóvel são então libertados.",

@@ -60,9 +60,9 @@ const pt: Dictionary = {
     steps: [
       { title: "1 · Entrar", body: "Entre com email ou conta social — a Privy cria uma carteira Sui não-custodial, sem extensão." },
       { title: "2 · Documentos + IA", body: "Carregue a caderneta predial e o documento de identificação. A IA extrai o artigo matricial, o VPT, a morada e o proprietário." },
-      { title: "3 · KYC World ID", body: "Prove que é um humano único e residente em Portugal com o World ID — sem revelar dados pessoais." },
+      { title: "3 · Elegibilidade World ID", body: "O Identity Check atesta 18+ e documento emitido em Portugal; o Selfie Check prova que está presente. Pedimos predicados, não dados — nome e número do documento nunca chegam à aplicação." },
       { title: "4 · Tokenizar", body: "O imóvel é emitido como moedas de capital HOUSE na Sui (pacote Move), com fornecimento indexado ao VPT." },
-      { title: "5 · Colateralizar", body: "Bloqueie uma fração dos tokens como garantia. Um agente de IA valida a garantia e o KYC." },
+      { title: "5 · Colateralizar", body: "Bloqueie uma fração dos tokens como garantia. Um agente de IA valida a garantia, a elegibilidade World ID e a ausência de outro crédito ativo do mesmo humano." },
       { title: "6 · Levantar", body: "O agente de tesouraria transfere USDC autonomamente. Levante os fundos para o sinal da casa nova." },
     ],
   },
@@ -114,9 +114,9 @@ const en: Dictionary = {
     steps: [
       { title: "1 · Sign in", body: "Sign in with email or a social account — Privy provisions a non-custodial Sui wallet, no extension." },
       { title: "2 · Documents + AI", body: "Upload the caderneta predial and your ID. AI extracts the tax article, VPT value, address and owner." },
-      { title: "3 · World ID KYC", body: "Prove you're a unique human resident in Portugal with World ID — without revealing personal data." },
+      { title: "3 · World ID eligibility", body: "Identity Check attests 18+ and a Portugal-issued document; Selfie Check proves you're present. We request predicates, not data — your name and document number never reach the app." },
       { title: "4 · Tokenize", body: "The property is issued as HOUSE equity coins on Sui (a Move package), supply pegged to its VPT value." },
-      { title: "5 · Collateralize", body: "Lock a fraction of the tokens as collateral. An AI agent verifies the collateral and KYC." },
+      { title: "5 · Collateralize", body: "Lock a fraction of the tokens as collateral. An AI agent verifies the collateral, World ID eligibility, and that this human has no other active loan." },
       { title: "6 · Withdraw", body: "The treasury agent transfers USDC autonomously. Withdraw the funds for the new home's signal." },
     ],
   },

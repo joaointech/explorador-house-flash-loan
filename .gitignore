@@ -31,5 +31,7 @@ yarn-error.log*
 # Sui Move build artifacts
 sui/build/
 
-# loan registry (server-side demo store)
+# loan registry + World ID session store (server-side demo stores)
 .loans.json
+.kyc.json
+.agreements.json

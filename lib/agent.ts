@@ -1,16 +1,21 @@
 import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
 import { disburse } from "./sui";
-import type { Disbursement, KycResult } from "./types";
+import type { Disbursement } from "./types";
+import type { KycSession } from "./kyc-store";
 
 /**
  * The treasury AI agent.
  *
- * Given a collateral position + a World-ID-verified unique human, the agent
- * decides whether to release liquidity and then EXECUTES it on Sui — recording
- * the draw on the CollateralVault (lock_and_draw) and transferring stablecoin —
- * in a single programmable transaction. It only ever acts on behalf of a
- * verified human (the World AgentKit "human-backed agent" requirement).
+ * Given a collateral position + two World ID credentials, the agent decides whether
+ * to release liquidity and then EXECUTES it on Sui — recording the draw on the
+ * CollateralVault (lock_and_draw) and transferring stablecoin — in a single
+ * programmable transaction. It only ever acts on behalf of a verified human (the
+ * World AgentKit "human-backed agent" requirement).
+ *
+ * The credentials are underwriting inputs, not a login: Identity Check establishes
+ * ELIGIBILITY (18+, PT-issued document) and Selfie Check establishes PRESENCE and
+ * sybil-resistance (this human has no other active loan — checked before we get here).
  *
  * Reasoning runs on Claude (structured output). Without a key it falls back to
  * a deterministic policy so the demo still executes end-to-end.
@@ -20,7 +25,7 @@ type AgentInput = {
   vpt: number;
   collateralPct: number; // fraction of equity locked (0..1)
   drawAmount: number; // requested USDC
-  kyc: KycResult;
+  kyc: KycSession; // resolved server-side; never client-supplied
   accountId: string; // Sui address
   vaultId: string;
 };
@@ -43,14 +48,16 @@ async function decide(input: AgentInput): Promise<Decision> {
   const ltv = lockedEquity > 0 ? input.drawAmount / lockedEquity : Infinity;
   const maxDraw = Math.floor(lockedEquity * 0.7);
 
+  const eligible = input.kyc.identityAttested && Boolean(input.kyc.selfieNullifier);
+
   if (!process.env.ANTHROPIC_API_KEY) {
-    const approve = input.kyc.verified && input.drawAmount <= maxDraw && input.drawAmount > 0;
+    const approve = eligible && input.drawAmount <= maxDraw && input.drawAmount > 0;
     return {
       approve,
       maxDraw,
       rationale: approve
-        ? `Approved: borrower is a World-ID-verified unique human in ${input.kyc.jurisdiction ?? "PT"}; requested €${input.drawAmount.toLocaleString()} is ${(ltv * 100).toFixed(0)}% LTV against €${lockedEquity.toLocaleString()} locked equity, within the 70% policy.`
-        : `Declined: ${!input.kyc.verified ? "KYC not verified" : `€${input.drawAmount.toLocaleString()} exceeds the 70% LTV cap of €${maxDraw.toLocaleString()}`}.`,
+        ? `Approved: World ID attests the borrower is 18+ with a PT-issued document (Identity Check) and was physically present at signing (Selfie Check), with no other active loan under this nullifier; the Termo de Reconhecimento e Confissão de Dívida was signed via Chave Móvel Digital and its hash anchored on Sui; requested €${input.drawAmount.toLocaleString()} is ${(ltv * 100).toFixed(0)}% LTV against €${lockedEquity.toLocaleString()} locked equity, within the 70% policy.`
+        : `Declined: ${!eligible ? "World ID eligibility not established (18+ / PT-issued document / live presence)" : `€${input.drawAmount.toLocaleString()} exceeds the 70% LTV cap of €${maxDraw.toLocaleString()}`}.`,
     };
   }
 
@@ -61,13 +68,17 @@ async function decide(input: AgentInput): Promise<Decision> {
     output_config: { format: { type: "json_schema", schema: DECISION_SCHEMA } },
     system:
       "You are the treasury risk agent for a real-estate bridge-liquidity protocol on Sui. " +
-      "You release stablecoin liquidity against tokenized home equity. Only approve when the borrower is a verified unique human (World ID) and the requested draw stays within 70% loan-to-value of the locked equity. Be concise.",
+      "You release stablecoin liquidity against tokenized home equity. Only approve when World ID establishes eligibility (document-backed 18+ and a Portugal-issued document) AND liveness (a selfie proving the borrower was present at signing) AND the borrower has signed a Termo de Reconhecimento e Confissão de Dívida via Chave Móvel Digital (checked before you run — its hash is already anchored on Sui), and the requested draw stays within 70% loan-to-value of the locked equity. " +
+      "You receive attestations, not personal data — you never see a name, birth date or document number, and you must not ask for them. Be concise.",
     messages: [
       {
         role: "user",
         content: JSON.stringify({
-          worldIdVerifiedHuman: input.kyc.verified,
-          jurisdiction: input.kyc.jurisdiction,
+          // Predicates only — this is the entire identity surface the agent ever sees.
+          identityAttested18PlusPrt: input.kyc.identityAttested,
+          livePresenceAttested: Boolean(input.kyc.selfieNullifier),
+          noOtherActiveLoanForThisHuman: true, // enforced before the agent runs
+          sandbox: input.kyc.sandbox ?? false,
           vptEur: input.vpt,
           collateralPct: input.collateralPct,
           lockedEquityEur: lockedEquity,

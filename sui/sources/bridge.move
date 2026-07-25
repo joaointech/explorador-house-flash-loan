@@ -154,12 +154,21 @@ module bridge::house {
         clock: &Clock,
         pct_bps: u64,
         draw_usdc: u64,
-        _ctx: &mut TxContext,
+        ctx: &mut TxContext,
     ) {
         let lock_amt = (vault.vpt * pct_bps) / 10000;
         vault.locked = lock_amt;
         vault.drawn_usdc = draw_usdc;
         vault.drawn_at_ms = clock::timestamp_ms(clock);
+
+        // Only the pledged fraction stays locked as collateral; the rest of the
+        // tokenized equity belongs to the owner and is released to their wallet
+        // now. Repaying in full later releases the locked collateral too.
+        let held = balance::value(&vault.equity);
+        if (held > lock_amt) {
+            let free = balance::split(&mut vault.equity, held - lock_amt);
+            transfer::public_transfer(coin::from_balance(free, ctx), vault.owner);
+        };
 
         pool.total_drawn = pool.total_drawn + draw_usdc;
         let util = utilization_bps(pool);
@@ -554,6 +563,29 @@ module bridge::house {
         assert!(balance::value(&vault.equity) == 0, 5);            // equity released
         assert!(pool.total_drawn == 0, 6);
         assert!(pool.total_interest == (7_250 + 6_525) * 1_000_000, 7);
+
+        std::unit_test::destroy(vault);
+        std::unit_test::destroy(pool);
+        clock::destroy_for_testing(clock);
+        sui::test_scenario::end(sc);
+    }
+
+    #[test]
+    fun test_lock_and_draw_releases_free_equity() {
+        let mut sc = sui::test_scenario::begin(@0xA);
+        let ctx = sui::test_scenario::ctx(&mut sc);
+        let clock = clock::create_for_testing(ctx);
+        let mut pool = mk_pool(1_000_000, 0, ctx);
+        // Fresh vault: full equity, nothing drawn yet.
+        let mut vault = mk_vault(100_000, 0, 0, 0, ctx);
+        assert!(balance::value(&vault.equity) == 100_000, 0);
+
+        // Collateralize 50% and draw: only 50,000 stays locked as collateral,
+        // the other 50,000 is released to the owner's wallet immediately.
+        lock_and_draw(&mut vault, &mut pool, &clock, 5000, 35_000, ctx);
+        assert!(vault.locked == 50_000, 1);
+        assert!(vault.drawn_usdc == 35_000, 2);
+        assert!(balance::value(&vault.equity) == 50_000, 3); // only collateral remains in the vault
 
         std::unit_test::destroy(vault);
         std::unit_test::destroy(pool);

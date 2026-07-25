@@ -74,7 +74,7 @@ export default function DashboardView({ lang }: { lang: Locale }) {
         title: "Your account", empty: "No active position yet.", start: "Start the bridge",
         loaned: "Loaned", outstanding: "Outstanding", owed: "Owed now", paidBack: "Paid back", apr: "Borrow APR",
         houseTitle: "HOUSE tokens", minted: "Total minted", inVault: "In the collateral vault", inWalletL: "In your wallet",
-        collateralPledged: "pledged as collateral", releaseNote: "Repaying in full releases all HOUSE to your wallet.",
+        collateralPledged: "locked as collateral", releaseNote: "The rest is already in your wallet; repaying in full releases the collateral too.",
         docsTitle: "Documents", anchor: "Doc hash (Sui)", vault: "Collateral vault", pay: "Disbursement (Sui tx)", repayTx: "Repayment (Sui tx)",
         property: "Property", vpt: "VPT value",
       }
@@ -82,7 +82,7 @@ export default function DashboardView({ lang }: { lang: Locale }) {
         title: "A sua conta", empty: "Ainda não há posição ativa.", start: "Iniciar a ponte",
         loaned: "Emprestado", outstanding: "Em dívida (capital)", owed: "Em dívida agora", paidBack: "Reembolsado", apr: "TAN",
         houseTitle: "Tokens HOUSE", minted: "Total emitido", inVault: "No vault de garantia", inWalletL: "Na sua carteira",
-        collateralPledged: "dados como garantia", releaseNote: "Reembolsar na totalidade liberta todos os HOUSE para a sua carteira.",
+        collateralPledged: "bloqueados como garantia", releaseNote: "O restante já está na sua carteira; reembolsar na totalidade liberta também a garantia.",
         docsTitle: "Documentos", anchor: "Hash do doc (Sui)", vault: "Vault de garantia", pay: "Pagamento (Transação Sui)", repayTx: "Reembolso (Transação Sui)",
         property: "Imóvel", vpt: "Valor VPT",
       };

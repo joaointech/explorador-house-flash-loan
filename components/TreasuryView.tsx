@@ -32,10 +32,12 @@ export default function TreasuryView({ lang }: { lang: Locale }) {
   const t = en
     ? { title: "Treasury", sub: "The protocol treasury wallet on Sui — it holds the lending pool, mints eUSD for disbursements, and receives repayments.",
         addr: "Treasury address", holdings: "Wallet holdings", view: "View on Suiscan", pool: "Lending pool",
-        capacity: "Capacity", util: "Utilization", rate: "Borrow APR now", yield: "Yield earned", supply: "eUSD in circulation", empty: "No balances." }
+        capacity: "Capacity", util: "Utilization", rate: "Borrow APR now", yield: "Yield earned",
+        lentOut: "Currently lent out", minted: "eUSD minted all-time (demo settlement)", empty: "No balances." }
     : { title: "Tesouraria", sub: "A carteira da tesouraria do protocolo na Sui — detém o pool de crédito, emite eUSD para desembolsos e recebe reembolsos.",
         addr: "Endereço da tesouraria", holdings: "Saldos da carteira", view: "Ver na Suiscan", pool: "Pool de crédito",
-        capacity: "Capacidade", util: "Utilização", rate: "TAN agora", yield: "Rendimento gerado", supply: "eUSD em circulação", empty: "Sem saldos." };
+        capacity: "Capacidade", util: "Utilização", rate: "TAN agora", yield: "Rendimento gerado",
+        lentOut: "Atualmente emprestado", minted: "eUSD emitido no total (liquidação demo)", empty: "Sem saldos." };
 
   const card = "rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200/70 dark:bg-[var(--color-card)] dark:ring-slate-700";
   const stat = (label: string, value: string, tone?: "primary" | "emerald") => (
@@ -71,7 +73,11 @@ export default function TreasuryView({ lang }: { lang: Locale }) {
         {stat(t.rate, pct(pool?.currentRateBps ?? 200), "primary")}
         {stat(t.yield, `€${fmt(pool?.totalInterest ?? 0, 2)}`, "emerald")}
       </div>
-      <div className="mt-4">{stat(t.supply, `${fmt(treasury?.eusdSupply ?? 0, 0)} eUSD`)}</div>
+      <div className="mt-4 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200/70 dark:bg-[var(--color-card)] dark:ring-slate-700">
+        <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t.lentOut}</p>
+        <p className="mt-1 text-2xl font-bold text-slate-800 dark:text-slate-100">€{fmt(pool?.totalDrawn ?? 0)}</p>
+        <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">{t.minted}: {fmt(treasury?.eusdSupply ?? 0, 0)} eUSD</p>
+      </div>
 
       {/* Holdings */}
       <h2 className="mt-8 mb-3 text-lg font-bold text-slate-800 dark:text-slate-100">{t.holdings}</h2>

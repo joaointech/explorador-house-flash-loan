@@ -386,11 +386,16 @@ export type TreasuryDetail = {
 };
 export async function treasuryDetail(): Promise<TreasuryDetail> {
   const EUSD = process.env.EUSD_COIN_TYPE;
+  const HOUSE = process.env.HOUSE_COIN_TYPE || `${PKG}::house::HOUSE`;
   if (!suiConfigured()) return { address: "", suiBalance: 0, eusdSupply: 0, balances: [], demo: true };
   const { client, sender } = await ctx();
   try {
     const all = await client.getAllBalances({ owner: sender });
+    // Only the current deployment's coins — hide HOUSE/eUSD left over from earlier
+    // test package publishes (same symbol, different package id).
+    const keep = new Set([EUSD, HOUSE].filter(Boolean));
     const balances = all
+      .filter((b) => b.coinType.endsWith("::sui::SUI") || b.coinType.includes("::wal::WAL") || keep.has(b.coinType))
       .map((b) => {
         const symbol = b.coinType.split("::").pop() || b.coinType.slice(0, 8);
         const dp = DECIMALS[symbol] ?? 9;

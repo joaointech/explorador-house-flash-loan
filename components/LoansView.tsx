@@ -2,9 +2,13 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import { IDKitRequestWidget, selfieCheckLegacy, IDKitErrorCodes } from "@worldcoin/idkit";
 import { useWallet } from "@/components/WalletProvider";
 import type { Locale } from "@/lib/i18n";
-import { suiscanTx, suiscanObject, suiscanCoin, onChain } from "@/lib/types";
+import { suiscanTx, suiscanObject, suiscanCoin, onChain, WORLD_ACTIONS } from "@/lib/types";
+import { fetchRpContext, submitProof, type RpContext } from "@/lib/worldid-client";
+
+const APP_ID = (process.env.NEXT_PUBLIC_WORLD_APP_ID || "app_") as `app_${string}`;
 
 type Loan = {
   vaultId: string;
@@ -31,6 +35,11 @@ export default function LoansView({ lang }: { lang: Locale }) {
   const [treasury, setTreasury] = useState<Treasury | null>(null);
   const [loading, setLoading] = useState(true);
   const [repaying, setRepaying] = useState<string | null>(null);
+  // Continuity re-auth: the vault awaiting a Selfie Check before we'll repay it.
+  const [gateVault, setGateVault] = useState<string | null>(null);
+  const [gateCtx, setGateCtx] = useState<RpContext | null>(null);
+  // Keyed by vault so the message stays attached to its card after the gate closes.
+  const [gateError, setGateError] = useState<{ vaultId: string; msg: string } | null>(null);
 
   const fmt = (n: number) => n.toLocaleString(lang === "en" ? "en-US" : "pt-PT");
 
@@ -41,6 +50,10 @@ export default function LoansView({ lang }: { lang: Locale }) {
         treasury: "Treasury", tSui: "SUI balance", tEusd: "eUSD minted", tAddr: "Address",
         property: "Property", drawn: "Drawn", collateral: "Collateral", vaultL: "Vault", coinL: "HOUSE coin", disburseL: "Disbursement", repayL: "Repayment",
         active: "Active", repaid: "Repaid", repay: "Repay & release", repayingT: "Repaying…",
+        gate: "Confirming it's you…",
+        gateNote: "Repaying releases your collateral, so we re-check with a live selfie that it's you — no documents, no personal data.",
+        mismatch: "This World ID isn't the one that pledged this property. Only the original borrower can repay and release the collateral.",
+        gateErr: "We couldn't confirm it's you. Try again.",
       }
     : {
         title: "Gestão de empréstimos", sub: "Posições-ponte ativas, em tempo real na Sui. Reembolse para liquidar o levantamento em eUSD e libertar a garantia ao proprietário.",
@@ -48,6 +61,10 @@ export default function LoansView({ lang }: { lang: Locale }) {
         treasury: "Tesouraria", tSui: "Saldo SUI", tEusd: "eUSD emitido", tAddr: "Endereço",
         property: "Imóvel", drawn: "Levantado", collateral: "Garantia", vaultL: "Vault", coinL: "Moeda HOUSE", disburseL: "Pagamento", repayL: "Reembolso",
         active: "Ativo", repaid: "Reembolsado", repay: "Reembolsar & libertar", repayingT: "A reembolsar…",
+        gate: "A confirmar que é você…",
+        gateNote: "Reembolsar liberta a sua garantia, por isso reconfirmamos com uma selfie ao vivo que é você — sem documentos, sem dados pessoais.",
+        mismatch: "Este World ID não é o que deu este imóvel como garantia. Só o mutuário original pode reembolsar e libertar a garantia.",
+        gateErr: "Não conseguimos confirmar que é você. Tente de novo.",
       };
 
   const load = useCallback(async () => {
@@ -67,18 +84,49 @@ export default function LoansView({ lang }: { lang: Locale }) {
 
   useEffect(() => { load(); }, [load]);
 
-  const repay = async (vaultId: string) => {
+  /** Step 1 of repayment: prove you're still the human who pledged this house. */
+  const startRepay = async (vaultId: string) => {
+    setGateError(null);
     setRepaying(vaultId);
     try {
-      await fetch("/api/sui/repay", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ vaultId }),
-      });
-      await load();
-    } finally {
+      setGateCtx(await fetchRpContext("selfie"));
+      setGateVault(vaultId);
+    } catch {
+      setGateError({ vaultId, msg: t.gateErr });
       setRepaying(null);
     }
+  };
+
+  /** Step 2: the backend re-checks the nullifier against the one bound at origination. */
+  const finishRepay = async (vaultId: string, result: unknown) => {
+    try {
+      const { token } = await submitProof("selfie", result);
+      const res = await fetch("/api/sui/repay", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ vaultId, kycToken: token }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? "repay_failed");
+      await load();
+    } catch (e) {
+      const code = e instanceof Error ? e.message : "";
+      setGateError({ vaultId, msg: code === "kyc_mismatch" ? t.mismatch : t.gateErr });
+    } finally {
+      setGateVault(null);
+      setGateCtx(null);
+      setRepaying(null);
+    }
+  };
+
+  const gateFailed = (vaultId: string, code: IDKitErrorCodes) => {
+    setGateError({
+      vaultId,
+      msg: code === IDKitErrorCodes.UserRejected ? "" : t.gateErr,
+    });
+    setGateVault(null);
+    setGateCtx(null);
+    setRepaying(null);
   };
 
   return (
@@ -150,12 +198,14 @@ export default function LoansView({ lang }: { lang: Locale }) {
                   <div className="mt-5">
                     <button
                       type="button"
-                      onClick={() => repay(l.vaultId)}
+                      onClick={() => startRepay(l.vaultId)}
                       disabled={repaying === l.vaultId}
                       className="inline-flex h-11 items-center justify-center rounded-lg bg-[var(--color-primary)] px-6 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:opacity-60"
                     >
-                      {repaying === l.vaultId ? t.repayingT : `↩ ${t.repay}`}
+                      {repaying === l.vaultId ? (gateVault === l.vaultId ? t.gate : t.repayingT) : `↩ ${t.repay}`}
                     </button>
+                    <p className="mt-2 max-w-md text-xs leading-relaxed text-slate-500 dark:text-slate-400">🤳 {t.gateNote}</p>
+                    {gateError?.vaultId === l.vaultId && <p className="mt-2 text-sm text-[var(--color-danger)]">{gateError.msg}</p>}
                   </div>
                 )}
               </div>
@@ -163,6 +213,25 @@ export default function LoansView({ lang }: { lang: Locale }) {
           })
         )}
       </div>
+
+      {/* Continuity gate — Selfie Check only. The document attributes were established at
+          origination and don't change; what we re-check is that the same human is present. */}
+      {gateVault && gateCtx && (
+        <IDKitRequestWidget
+          open
+          onOpenChange={(o) => { if (!o) { setGateVault(null); setGateCtx(null); setRepaying(null); } }}
+          app_id={APP_ID}
+          action={WORLD_ACTIONS.selfie}
+          rp_context={gateCtx}
+          allow_legacy_proofs
+          require_user_presence
+          language="en"
+          preset={selfieCheckLegacy({ signal: gateVault })}
+          handleVerify={(result) => finishRepay(gateVault, result)}
+          onSuccess={() => { /* finishRepay already reloaded the list */ }}
+          onError={(code) => gateFailed(gateVault, code)}
+        />
+      )}
     </div>
   );
 }

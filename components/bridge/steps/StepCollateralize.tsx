@@ -50,7 +50,7 @@ export default function StepCollateralize({ lang, session, patch, next, back, ca
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           vpt, collateralPct: pct, drawAmount: clampedDraw,
-          kyc: session.kyc, accountId: session.accountId, vaultId: session.token?.vaultId,
+          kycToken: session.kyc?.token, accountId: session.accountId, vaultId: session.token?.vaultId,
           article: session.property?.artigoMatricial, morada: session.property?.morada, coinType: session.token?.coinType,
         }),
       });

@@ -12,11 +12,11 @@ stablecoin liquidity in minutes — 100% on Sui, auditable end to end:
 
 1. **Sign in** — email / social login via **Privy** → a non-custodial **Sui** embedded wallet (no extension, no seed phrase).
 2. **Documents + AI** — upload the *caderneta predial* + ID; **Claude** extracts the tax article, VPT value, address and owner.
-3. **World ID KYC** — prove a unique human resident in Portugal (Identity Check jurisdiction + age).
+3. **World ID eligibility** — **Identity Check** attests `18+` and a `PRT`-issued document (predicates only — the app never receives a name, birth date or document number), and **Selfie Check** proves the document holder is live and hasn't already borrowed against another property. See [WORLDID_TESTING.md](./WORLDID_TESTING.md).
 4. **Encrypt & anchor** — documents are encrypted (Seal / AES) and stored on **Walrus**; the document hash is anchored on **Sui** (a `DocumentAnchored` event).
 5. **Tokenize** — the house is minted as **HOUSE equity coins** by a published **Move package**, supply pegged 1:1 to VPT (€), held in a shared `CollateralVault` object.
-6. **Collateralize & draw** — lock a fraction of the equity; an **AI treasury agent** verifies collateral + the World-ID human and, in **one Sui transaction**, records the draw on the vault (`lock_and_draw`) and transfers **USDC**.
-7. **Withdraw** the liquidity for the new CPCV. Repaid when the old house sells.
+6. **Collateralize & draw** — lock a fraction of the equity; an **AI treasury agent** underwrites the collateral, the World ID attestations and the sybil check, then in **one Sui transaction** records the draw on the vault (`lock_and_draw`) and transfers **USDC**.
+7. **Withdraw** the liquidity for the new CPCV. Repaid when the old house sells — and repaying or re-drawing needs a **fresh Selfie Check matching the nullifier bound at origination**, so only the human who pledged the house can settle it.
 
 ---
 
@@ -35,7 +35,7 @@ stablecoin liquidity in minutes — 100% on Sui, auditable end to end:
 - HOUSE equity coin: `…::house::HOUSE` · **eUSD stablecoin**: `…::eusd::EUSD`
 - Verified live txs (Suiscan testnet): tokenize, `anchor`, and the agent's disbursement (which **mints 37,500 eUSD** — a real full-value stablecoin transfer) all execute on-chain.
 
-Plus chain-agnostic **World ID** (unique human + PT jurisdiction) and **Claude** (document parsing + the treasury agent's reasoning).
+Plus chain-agnostic **World ID** (Identity Check eligibility + Selfie Check liveness/sybil resistance) and **Claude** (document parsing + the treasury agent's reasoning).
 
 ---
 
@@ -71,9 +71,11 @@ Copy the printed package id + TreasuryCap into `.env.local` (`BRIDGE_PACKAGE_ID`
 - **Stablecoin payout**: the treasury mints our own **eUSD** (`EUSD_TREASURY_CAP`) so disbursements are real full-value transfers (thousands of USD). Falls back to Circle USDC (if held) or a symbolic SUI transfer when `EUSD_TREASURY_CAP` is unset.
 - **Privy wallet**: `NEXT_PUBLIC_PRIVY_APP_ID` from dashboard.privy.io.
 - **Walrus storage**: needs the treasury funded with **WAL** — otherwise a demo blob id is returned (the Sui anchor is still real).
-- **AI**: `ANTHROPIC_API_KEY`. **World ID**: a real `NEXT_PUBLIC_WORLD_APP_ID`.
+- **AI**: `ANTHROPIC_API_KEY`.
+- **World ID**: `NEXT_PUBLIC_WORLD_APP_ID` + `WORLD_RP_ID` + `WORLD_RP_SIGNING_KEY` from the Developer Portal, and one registered action per credential (`NEXT_PUBLIC_WORLD_ACTION_IDENTITY`, `NEXT_PUBLIC_WORLD_ACTION_SELFIE`). The signing key is **server-only** — the client only ever holds an opaque session token, and the disbursement route resolves World ID state itself. Testing on a phone with World App installed needs a public URL (`ngrok http 3000`).
 
 Without keys, each step returns a clearly-marked **demo** result so the flow is always demoable.
+World ID is the exception: `WORLD_SANDBOX=1` fakes proofs but paints a loud amber **SANDBOX** badge over the result, so a stubbed verification can never be mistaken for a real one.
 
 ---
 
@@ -85,13 +87,14 @@ app/[lang]/              pt|en shell (landing, bridge wizard, loans management, 
 app/api/
   parse-docs/            Claude vision → structured caderneta fields
   store-docs/            Seal-encrypt → Walrus upload → Sui anchor event
-  worldid/verify/        World ID proof verification
+  worldid/rp-context/    signs an rp_context per credential (RP key never leaves the server)
+  worldid/verify/        verifies an IDKit proof with the Developer Portal → KYC session
   sui/tokenize/          Move `tokenize` → HOUSE coins + CollateralVault
   sui/loans/             list positions (live vault state) + treasury summary
-  sui/repay/             Move `repay` → settle eUSD + release collateral (1 PTB)
+  sui/repay/             Move `repay` → settle eUSD + release collateral (1 PTB), gated on Selfie Check continuity
   agent/disburse/        treasury AI agent → lock_and_draw + eUSD mint (1 PTB)
 lib/
-  sui.ts  walrus.ts  worldid.ts  agent.ts  ai-parse.ts
+  sui.ts  walrus.ts  worldid.ts  kyc-store.ts  agent.ts  ai-parse.ts
 components/              Privy wallet + the 6-step wizard + dashboard
 ```
 

@@ -20,6 +20,10 @@ export type LoanEntry = {
   coinType: string;
   disburseDigest: string;
   repayDigest?: string;
+  // World ID nullifiers, bound at origination. The selfie one is the sybil key and
+  // the continuity check for any later action on this loan.
+  selfieNullifier?: string;
+  identityNullifier?: string;
   status: "active" | "repaid";
   createdAt: number;
 };

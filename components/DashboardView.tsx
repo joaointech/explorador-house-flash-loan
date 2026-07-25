@@ -96,7 +96,7 @@ export default function DashboardView({ lang }: { lang: Locale }) {
         <div>
           {s.storage && auditRow(t.walrus, s.storage.blobId)}
           {s.storage && auditRow(t.anchor, s.storage.anchorDigest, onChain(s.storage.anchorDigest) ? suiscanTx(s.storage.anchorDigest) : undefined)}
-          {s.kyc && auditRow(t.kyc, `${t.human} · 🇵🇹 ${s.kyc.jurisdiction ?? "PT"}`)}
+          {s.kyc && auditRow(t.kyc, `${t.human} · 🇵🇹 18+ · PRT (attested)`)}
           {s.token && auditRow(t.coin, s.token.coinType, onChain(s.token.coinType) ? suiscanCoin(s.token.coinType) : undefined)}
           {s.token?.vaultId && auditRow(t.vault, s.token.vaultId, onChain(s.token.vaultId) ? suiscanObject(s.token.vaultId) : undefined)}
           {s.disbursement?.digest && auditRow(t.pay, s.disbursement.digest, onChain(s.disbursement.digest) ? suiscanTx(s.disbursement.digest) : undefined)}

@@ -45,6 +45,8 @@ Feedback from actually building on each stack during ETHGlobal Lisbon 2026.
 ## World ID
 - IDKit v4's credential-builder model (`proofOfHuman`, `identityCheck`) is powerful; the v3→v4
   verification migration (`verifyCloudProof` is gone) was the hardest thing to find.
+- Full beta-test writeup for **Identity Check** and **Selfie Check** — developer friction, docs
+  gaps, user-testing protocol and results — lives in [WORLDID_TESTING.md](./WORLDID_TESTING.md).
 
 ## What we'd build next
 - Real Seal access policy so decryption is gated on the loan being active.

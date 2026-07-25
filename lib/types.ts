@@ -20,12 +20,37 @@ export type StorageResult = {
   anchorDigest: string; // Sui tx digest of the DocumentAnchored event
 };
 
-/** World ID verification result (unique human + jurisdiction attributes). */
+/** The two World ID credentials the KYC step collects. */
+export type WorldCredential = "identity" | "selfie";
+
+/** Actions registered in the Developer Portal — shared by client and server. */
+export const WORLD_ACTIONS: Record<WorldCredential, string> = {
+  identity: process.env.NEXT_PUBLIC_WORLD_ACTION_IDENTITY || "collateralize-house-identity",
+  selfie: process.env.NEXT_PUBLIC_WORLD_ACTION_SELFIE || "collateralize-house-selfie",
+};
+
+/**
+ * Identity Check predicates. We request the MINIMUM needed to establish eligibility
+ * for a Portuguese home-equity loan and nothing more — no full_name, no
+ * document_number, no date of birth. The response is a boolean, not these values.
+ * Country codes are ISO 3166-1 alpha-3.
+ */
+export const IDENTITY_ATTRIBUTES = [
+  { type: "minimum_age", value: 18 },
+  { type: "issuing_country", value: "PRT" },
+] as const;
+
+/**
+ * What the client holds after World ID verification. `token` is an opaque lookup
+ * key for a server-side session — never a claim the client can forge. The nullifiers
+ * are display-only; the server reads its own copy when money moves.
+ */
 export type KycResult = {
-  verified: boolean;
-  nullifierHash: string;
-  jurisdiction?: string; // e.g. "PT"
-  verificationLevel?: string; // "orb" | "device"
+  token: string;
+  identityAttested: boolean;
+  selfieNullifier: string;
+  identityNullifier: string;
+  sandbox?: boolean;
 };
 
 /** HOUSE fungible equity minted on Sui + its CollateralVault object. */

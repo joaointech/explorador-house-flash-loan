@@ -1,14 +1,16 @@
 import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
 import type { PropertyData } from "./types";
+import { aiProvider, openaiClient, OPENAI_MODEL } from "./ai";
 
 /**
  * AI extraction of the Portuguese *caderneta predial* (property tax register)
- * and ID document, using Claude with structured outputs. Runs server-side only
- * — the Anthropic key never reaches the browser.
+ * and ID document, using structured outputs. Runs server-side only — the API
+ * key never reaches the browser.
  *
- * Uses claude-opus-4-8 with vision/PDF document input and a strict JSON schema
- * (output_config.format) so the returned object always matches PropertyData.
+ * Provider-agnostic: OpenAI (Responses API, gpt-4o) or Anthropic (claude-opus-4-8),
+ * whichever key is configured. Both take vision/PDF document input and are
+ * constrained to a strict JSON schema so the result always matches PropertyData.
  */
 
 // JSON schema the model is constrained to. additionalProperties:false + required
@@ -49,20 +51,43 @@ function docBlock(doc: DocInput): Anthropic.ContentBlockParam {
   };
 }
 
-export async function parsePropertyDocuments(docs: DocInput[]): Promise<PropertyData> {
-  const client = new Anthropic(); // resolves ANTHROPIC_API_KEY / profile
+const INSTRUCTION = [
+  "These are Portuguese real-estate documents: a *caderneta predial* (property tax register) and possibly an identity document.",
+  "Extract the property's fields. The VPT (Valor Patrimonial Tributário) is a euro amount — return it as a plain number.",
+  "If a field is genuinely absent, use an empty string (or 0 for vpt) and lower your confidence.",
+  "Return only the structured object.",
+].join(" ");
 
+export async function parsePropertyDocuments(docs: DocInput[]): Promise<PropertyData> {
+  return aiProvider() === "openai" ? parseWithOpenAI(docs) : parseWithAnthropic(docs);
+}
+
+// ── OpenAI (Responses API: input_file for PDFs, input_image for images) ──
+async function parseWithOpenAI(docs: DocInput[]): Promise<PropertyData> {
+  const client = await openaiClient();
+  const parts = docs.map((d, i) =>
+    d.mediaType === "application/pdf"
+      ? { type: "input_file" as const, filename: `doc-${i}.pdf`, file_data: `data:application/pdf;base64,${d.dataBase64}` }
+      : { type: "input_image" as const, image_url: `data:${d.mediaType};base64,${d.dataBase64}`, detail: "auto" as const },
+  );
+
+  const res = await client.responses.create({
+    model: OPENAI_MODEL,
+    input: [{ role: "user", content: [...parts, { type: "input_text", text: INSTRUCTION }] }],
+    text: { format: { type: "json_schema", name: "property", schema: PROPERTY_SCHEMA, strict: true } },
+  });
+
+  const text = res.output_text;
+  if (!text) throw new Error("no_structured_output");
+  return JSON.parse(text) as PropertyData;
+}
+
+// ── Anthropic (document/image content blocks) ────────────────────────────
+async function parseWithAnthropic(docs: DocInput[]): Promise<PropertyData> {
+  const client = new Anthropic(); // resolves ANTHROPIC_API_KEY / profile
   const content: Anthropic.ContentBlockParam[] = [
     ...docs.map(docBlock),
-    {
-      type: "text",
-      text: [
-        "These are Portuguese real-estate documents: a *caderneta predial* (property tax register) and possibly an identity document.",
-        "Extract the property's fields. The VPT (Valor Patrimonial Tributário) is a euro amount — return it as a plain number.",
-        "If a field is genuinely absent, use an empty string (or 0 for vpt) and lower your confidence.",
-        "Return only the structured object.",
-      ].join(" "),
-    },
+    { type: "text", text: INSTRUCTION },
   ];
 
   const res = await client.messages.create({

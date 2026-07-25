@@ -1,6 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Cloud Run ships the self-contained .next/standalone output (server.js +
+  // only the traced runtime node_modules) — see deploy/Dockerfile.
+  output: "standalone",
+
   // Security headers — HSTS on every route.
   async headers() {
     return [

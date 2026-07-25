@@ -292,6 +292,9 @@ export async function repayLoan(params: {
   });
 
   const res = await client.signAndExecuteTransaction({ signer: keypair, transaction: tx });
+  // Wait for finality so an immediate dashboard refetch reads the post-repay state
+  // (reduced principal / released collateral) instead of stale chain data.
+  await client.waitForTransaction({ digest: res.digest });
   return { digest: res.digest, ...result, demo: false };
 }
 

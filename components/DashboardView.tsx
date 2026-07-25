@@ -41,16 +41,20 @@ const DOC_LABEL: Record<DocKind, { en: string; pt: string }> = {
 };
 
 export default function DashboardView({ lang }: { lang: Locale }) {
-  const { accountId } = useWallet();
+  const { accountId, ready: walletReady, connecting } = useWallet();
   const [loan, setLoan] = useState<Loan | null>(null);
-  const [ready, setReady] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
+    // Wait for the wallet to hydrate before deciding anything — otherwise we'd
+    // flash "no active position" while accountId is still resolving.
+    if (!walletReady) return;
     if (!accountId) {
       setLoan(null);
-      setReady(true);
+      setLoading(false);
       return;
     }
+    setLoading(true);
     try {
       const res = await fetch(`/api/sui/loans?owner=${encodeURIComponent(accountId)}`);
       const json = await res.json();
@@ -59,9 +63,9 @@ export default function DashboardView({ lang }: { lang: Locale }) {
     } catch {
       setLoan(null);
     } finally {
-      setReady(true);
+      setLoading(false);
     }
-  }, [accountId]);
+  }, [accountId, walletReady]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -69,14 +73,16 @@ export default function DashboardView({ lang }: { lang: Locale }) {
     ? {
         title: "Your account", empty: "No active position yet.", start: "Start the bridge",
         loaned: "Loaned", outstanding: "Outstanding", owed: "Owed now", paidBack: "Paid back", apr: "Borrow APR",
-        houseTitle: "HOUSE tokens", minted: "Total minted", explorador: "Held by explorador (collateral)", yours: "Held by you",
+        houseTitle: "HOUSE tokens", minted: "Total minted", inVault: "In the collateral vault", inWalletL: "In your wallet",
+        collateralPledged: "pledged as collateral", releaseNote: "Repaying in full releases all HOUSE to your wallet.",
         docsTitle: "Documents", anchor: "Doc hash (Sui)", vault: "Collateral vault", pay: "Disbursement (Sui tx)", repayTx: "Repayment (Sui tx)",
         property: "Property", vpt: "VPT value",
       }
     : {
         title: "A sua conta", empty: "Ainda não há posição ativa.", start: "Iniciar a ponte",
         loaned: "Emprestado", outstanding: "Em dívida (capital)", owed: "Em dívida agora", paidBack: "Reembolsado", apr: "TAN",
-        houseTitle: "Tokens HOUSE", minted: "Total emitido", explorador: "Detido pela explorador (garantia)", yours: "Detido por si",
+        houseTitle: "Tokens HOUSE", minted: "Total emitido", inVault: "No vault de garantia", inWalletL: "Na sua carteira",
+        collateralPledged: "dados como garantia", releaseNote: "Reembolsar na totalidade liberta todos os HOUSE para a sua carteira.",
         docsTitle: "Documentos", anchor: "Hash do doc (Sui)", vault: "Vault de garantia", pay: "Pagamento (Transação Sui)", repayTx: "Reembolso (Transação Sui)",
         property: "Imóvel", vpt: "Valor VPT",
       };
@@ -84,7 +90,7 @@ export default function DashboardView({ lang }: { lang: Locale }) {
   const fmt = (n: number) => n.toLocaleString(lang === "en" ? "en-US" : "pt-PT", { maximumFractionDigits: 2 });
   const pct = (bps: number) => `${(bps / 100).toFixed(bps % 100 === 0 ? 0 : 2)}%`;
 
-  if (!ready) return <div className="mx-auto max-w-5xl px-4 py-14" />;
+  if (!walletReady || connecting || loading) return <DashboardSkeleton />;
 
   if (!loan) {
     return (
@@ -119,7 +125,11 @@ export default function DashboardView({ lang }: { lang: Locale }) {
   const outstanding = loan.live?.drawnUsdc ?? loan.drawnUsdc;
   const owedNow = loan.live?.owedUsdc ?? outstanding;
   const locked = loan.live?.locked ?? 0;
-  const yours = Math.max(0, loan.vpt - locked) + (loan.live?.houseBalance ?? 0);
+  // What the borrower actually holds on-chain right now. All the HOUSE equity
+  // stays in the collateral vault until the loan is repaid in full, at which
+  // point the whole supply is released to the wallet — so until then this is 0.
+  const inWallet = loan.live?.houseBalance ?? 0;
+  const inVault = Math.max(0, loan.vpt - inWallet);
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-12">
@@ -140,9 +150,12 @@ export default function DashboardView({ lang }: { lang: Locale }) {
         <h2 className="mb-4 text-lg font-bold text-slate-800 dark:text-slate-100">{t.houseTitle}</h2>
         <div className="grid gap-4 sm:grid-cols-3">
           {stat(t.minted, `${fmt(loan.vpt)} HOUSE`)}
-          {stat(t.explorador, `${fmt(locked)} HOUSE`)}
-          {stat(t.yours, `${fmt(yours)} HOUSE`)}
+          {stat(t.inVault, `${fmt(inVault)} HOUSE`)}
+          {stat(t.inWalletL, `${fmt(inWallet)} HOUSE`, true)}
         </div>
+        <p className="mt-3 text-sm text-slate-500 dark:text-slate-400">
+          {fmt(locked)} HOUSE {t.collateralPledged}. {t.releaseNote}
+        </p>
       </div>
 
       {loan.documents && loan.documents.length > 0 && (
@@ -171,6 +184,27 @@ export default function DashboardView({ lang }: { lang: Locale }) {
       <div className="mt-8">
         <RepayPanel lang={lang} vaultId={loan.vaultId} owedUsdc={owedNow} onRepaid={load} />
       </div>
+    </div>
+  );
+}
+
+/** Loading placeholder that mirrors the dashboard layout so nothing flashes. */
+function DashboardSkeleton() {
+  const block = "animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800";
+  return (
+    <div className="mx-auto max-w-5xl px-4 py-12" aria-busy="true" aria-label="Loading">
+      <div className={`${block} h-8 w-56`} />
+      <div className={`${block} mt-3 h-4 w-72`} />
+      <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {[0, 1, 2, 3].map((i) => (
+          <div key={i} className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200/70 dark:bg-[var(--color-card)] dark:ring-slate-700">
+            <div className={`${block} h-3 w-20`} />
+            <div className={`${block} mt-2 h-7 w-24`} />
+          </div>
+        ))}
+      </div>
+      <div className={`${block} mt-8 h-40 w-full`} />
+      <div className={`${block} mt-8 h-48 w-full`} />
     </div>
   );
 }

@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getLoan, markRepaid } from "@/lib/loans";
-import { getVault, repayLoan } from "@/lib/sui";
-import { checkContinuity } from "@/lib/kyc-store";
+import { getLoan, recordRepayment } from "@/lib/loans";
+import { getVault, repayLoan, quoteOwed } from "@/lib/sui";
 
 export const runtime = "nodejs";
 export const maxDuration = 45;
@@ -15,29 +14,43 @@ export async function POST(req: NextRequest) {
     const loan = await getLoan(vaultId);
     if (!loan) return NextResponse.json({ error: "loan_not_found" }, { status: 404 });
 
-    // Continuity: repayment settles eUSD from the treasury and releases collateral, so
-    // a vault id alone must not trigger it. A fresh Selfie Check proves the human who
-    // pledged this house is the one asking.
-    const cont = await checkContinuity(String(body.kycToken ?? ""), vaultId);
-    if (!cont.ok) return NextResponse.json({ error: cont.error }, { status: 403 });
-
     // Amount owed: prefer live on-chain state, fall back to the registry.
     const live = await getVault(vaultId);
     const drawUsdc = live?.drawnUsdc ?? loan.drawnUsdc ?? 0;
+
+    // Quote 60s ahead: the tx settles seconds from now and on-chain interest only
+    // grows, so validating against a stale quote could land a payment below
+    // accrued interest and abort with EBelowAccruedInterest.
+    const q = quoteOwed(
+      { drawnUsdc: drawUsdc, drawnAtMs: live?.drawnAtMs ?? 0, rateBps: live?.rateBps ?? 0 },
+      Date.now() + 60_000,
+    );
+
+    // `amount` is in eUSD. Missing / not a number / <= 0 -> full payoff (repay
+    // in full, e.g. the "Repay in full" button sends no amount).
+    const raw = Number(body.amount);
+    const amountUsdc = Number.isFinite(raw) && raw > 0 ? Math.min(raw, q.owed / 1e6) : q.owed / 1e6;
+    if (amountUsdc * 1e6 < q.interest) {
+      return NextResponse.json({ error: "below_accrued_interest", minUsdc: q.interest / 1e6 }, { status: 400 });
+    }
 
     const res = await repayLoan({
       vaultId,
       drawUsdc,
       drawnAtMs: live?.drawnAtMs,
       rateBps: live?.rateBps,
+      amountUsdc,
     });
-    await markRepaid(vaultId, res.digest);
+    await recordRepayment(vaultId, res.digest, res.paidUsdc, res.remainingUsdc);
 
     return NextResponse.json({
       digest: res.digest,
-      repaidUsdc: res.owedUsdc,
+      repaidUsdc: res.paidUsdc, // amount settled by THIS call
       principalUsdc: res.principalUsdc,
       interestUsdc: res.interestUsdc,
+      remainingUsdc: res.remainingUsdc,
+      owedUsdc: res.owedUsdc,
+      partial: res.partial,
       rateBps: live?.rateBps ?? 0,
       demo: res.demo,
     });

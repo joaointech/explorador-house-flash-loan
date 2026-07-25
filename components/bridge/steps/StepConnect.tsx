@@ -3,12 +3,10 @@
 import { useEffect } from "react";
 import { useWallet } from "@/components/WalletProvider";
 import type { StepProps } from "../BridgeWizard";
-import { StepHeading, Card, PrimaryButton, SecondaryButton, ProofRow, Badge } from "../ui";
-
-const short = (a: string) => (a.length > 18 ? `${a.slice(0, 10)}…${a.slice(-6)}` : a);
+import { StepHeading, Card, PrimaryButton, SecondaryButton, Badge } from "../ui";
 
 export default function StepConnect({ lang, session, patch, next }: StepProps) {
-  const { accountId, mode, connecting, error, connectPrivy, connectDemo } = useWallet();
+  const { accountId, connecting, error, connectPrivy, connectDemo } = useWallet();
 
   useEffect(() => {
     if (accountId && accountId !== session.accountId) patch({ accountId });
@@ -23,7 +21,6 @@ export default function StepConnect({ lang, session, patch, next }: StepProps) {
           signin: "Sign in with Privy",
           demo: "Use demo wallet",
           connected: "Wallet ready",
-          account: "Sui address",
           cont: "Continue",
           connecting: "Connecting…",
         }
@@ -34,7 +31,6 @@ export default function StepConnect({ lang, session, patch, next }: StepProps) {
           signin: "Entrar com Privy",
           demo: "Usar carteira demo",
           connected: "Carteira pronta",
-          account: "Endereço Sui",
           cont: "Continuar",
           connecting: "A ligar…",
         };
@@ -46,7 +42,6 @@ export default function StepConnect({ lang, session, patch, next }: StepProps) {
         {accountId ? (
           <div className="space-y-4">
             <Badge tone="green">● {t.connected}</Badge>
-            <ProofRow label={t.account} value={`${short(accountId)}${mode === "demo" ? "  (demo)" : ""}`} />
             <div className="pt-2">
               <PrimaryButton onClick={next}>{t.cont} →</PrimaryButton>
             </div>

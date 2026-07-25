@@ -21,6 +21,8 @@ type WalletMode = "privy" | "demo" | null;
 
 type WalletCtx = {
   accountId: string | null;
+  email: string | null;
+  name: string | null;
   mode: WalletMode;
   connecting: boolean;
   ready: boolean;
@@ -54,6 +56,8 @@ function PrivyBridge({ children }: { children: React.ReactNode }) {
     (a) => a.type === "wallet" && (a as { chainType?: string }).chainType === "sui",
   ) as { address?: string } | undefined;
   const accountId = demoAcc ?? suiWallet?.address ?? null;
+  const email = user?.email?.address ?? user?.google?.email ?? null;
+  const name = user?.google?.name ?? null;
 
   // Once authenticated with intent, ensure a Sui wallet exists.
   useEffect(() => {
@@ -102,6 +106,8 @@ function PrivyBridge({ children }: { children: React.ReactNode }) {
   const value = useMemo<WalletCtx>(
     () => ({
       accountId,
+      email,
+      name,
       mode: demoAcc ? "demo" : suiWallet ? "privy" : null,
       connecting: connecting || creating,
       ready,
@@ -110,7 +116,7 @@ function PrivyBridge({ children }: { children: React.ReactNode }) {
       connectDemo,
       disconnect,
     }),
-    [accountId, demoAcc, suiWallet, connecting, creating, ready, error, connectPrivy, connectDemo, disconnect],
+    [accountId, email, name, demoAcc, suiWallet, connecting, creating, ready, error, connectPrivy, connectDemo, disconnect],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
@@ -122,6 +128,8 @@ function DemoOnlyProvider({ children }: { children: React.ReactNode }) {
   const value = useMemo<WalletCtx>(
     () => ({
       accountId,
+      email: null,
+      name: null,
       mode: accountId ? "demo" : null,
       connecting: false,
       ready: true,
@@ -143,6 +151,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       appId={appId}
       config={{
         appearance: { theme: "light", accentColor: "#2563eb" },
+        loginMethods: ["google", "email"],
       }}
     >
       <PrivyBridge>{children}</PrivyBridge>

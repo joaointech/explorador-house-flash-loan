@@ -1,36 +1,52 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createHash } from "crypto";
 import { storeEncryptedDocuments } from "@/lib/walrus";
 import { anchorDocument } from "@/lib/sui";
-import type { StorageResult } from "@/lib/types";
+import type { DocKind, StorageResult } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
+const SLOTS: DocKind[] = ["cartaoCidadao", "cadernetaPredial", "declaracaoImi"];
+
 export async function POST(req: NextRequest) {
   try {
     const form = await req.formData();
-    const files = form.getAll("files").filter((f): f is File => f instanceof File);
     const article = String(form.get("article") ?? "");
-    if (files.length === 0) return NextResponse.json({ error: "no_files" }, { status: 400 });
 
-    // Concatenate all document bytes into one payload to seal + store.
-    const parts: Buffer[] = [];
-    for (const f of files) parts.push(Buffer.from(await f.arrayBuffer()));
-    const bytes = new Uint8Array(Buffer.concat(parts));
+    const files: { kind: DocKind; file: File }[] = [];
+    for (const kind of SLOTS) {
+      const f = form.get(kind);
+      if (f instanceof File) files.push({ kind, file: f });
+    }
+    if (files.length !== SLOTS.length) {
+      return NextResponse.json({ error: "missing_documents" }, { status: 400 });
+    }
 
-    // 1) encrypt (Seal/AES) + upload to Walrus
-    const stored = await storeEncryptedDocuments(bytes);
+    // Each document is sealed + stored as its own Walrus blob, so the account
+    // page can link each one individually.
+    const documents = await Promise.all(
+      files.map(async ({ kind, file }) => {
+        const bytes = new Uint8Array(Buffer.from(await file.arrayBuffer()));
+        const stored = await storeEncryptedDocuments(bytes);
+        return { kind, blobId: stored.blobId, sealed: stored.sealed, sha256: stored.sha256, filename: file.name, demo: stored.demo };
+      }),
+    );
 
-    // 2) anchor the document hash on Sui (immutable DocumentAnchored event)
-    const anchor = await anchorDocument({ article, docHashHex: stored.sha256 });
+    // Anchor one combined hash on Sui (immutable DocumentAnchored event) — the
+    // existing audit trail, now covering all three documents at once.
+    const combined = createHash("sha256");
+    for (const d of documents) combined.update(d.sha256);
+    const sha256 = combined.digest("hex");
+    const anchor = await anchorDocument({ article, docHashHex: sha256 });
 
     const result: StorageResult = {
-      blobId: stored.blobId,
-      sealed: stored.sealed,
-      sha256: stored.sha256,
+      documents: documents.map(({ kind, blobId, sealed, sha256, filename }) => ({ kind, blobId, sealed, sha256, filename })),
+      sealed: documents.every((d) => d.sealed),
+      sha256,
       anchorDigest: anchor.digest,
     };
-    return NextResponse.json({ storage: result, demo: stored.demo || anchor.demo });
+    return NextResponse.json({ storage: result, demo: documents.some((d) => d.demo) || anchor.demo });
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : "store_failed";
     return NextResponse.json({ error: msg }, { status: 500 });

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { listLoans } from "@/lib/loans";
-import { getVault, getPool, quoteOwed, treasurySummary } from "@/lib/sui";
+import { getVault, getPool, quoteOwed, treasurySummary, houseBalance } from "@/lib/sui";
 
 export const runtime = "nodejs";
 export const maxDuration = 45;
@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
     // the borrow rate and interest accrued so far (money-market position).
     const loans = await Promise.all(
       entries.map(async (e) => {
-        const v = await getVault(e.vaultId);
+        const [v, house] = await Promise.all([getVault(e.vaultId), houseBalance(e.owner)]);
         const q = v ? quoteOwed(v) : null;
         return {
           ...e,
@@ -28,6 +28,7 @@ export async function GET(req: NextRequest) {
                 drawnAtMs: v.drawnAtMs,
                 interestUsdc: q ? q.interest / 1e6 : 0,
                 owedUsdc: q ? q.owed / 1e6 : v.drawnUsdc,
+                houseBalance: house,
               }
             : null,
           status: v?.repaid ? "repaid" : e.status,

@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { runTreasuryAgent } from "@/lib/agent";
-import { recordLoan, getLoan } from "@/lib/loans";
+import { recordLoan, getLoan, activeLoanForOwner } from "@/lib/loans";
 import { getKycSession, isComplete, nullifierHasActiveLoan, checkContinuity } from "@/lib/kyc-store";
 import { getAgreementForVault } from "@/lib/agreement";
+import type { StoredDoc } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -36,6 +37,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "kyc_sybil" }, { status: 400 });
     }
 
+    // One loan per account: an address that already has an open position can't
+    // originate another one (re-draws on the SAME vault are not blocked by this).
+    if (await activeLoanForOwner(accountId, vaultId)) {
+      return NextResponse.json({ error: "account_has_loan" }, { status: 400 });
+    }
+
     // Legal gate: no signed Termo de Reconhecimento e Confissão de Dívida, no funds.
     // The signature must match this vault, this borrower, and this exact draw — a
     // signed €X does not authorize a €2X disbursement.
@@ -54,8 +61,15 @@ export async function POST(req: NextRequest) {
       vaultId,
     });
 
-    // Register the loan so it shows up in the management surface.
+    // Register the loan so it shows up in the management surface. The termo
+    // (signed debt acknowledgement) joins the three documents already sealed
+    // and stored at the Documents step, so the account page can link all four.
     if (result.status === "executed" && vaultId.startsWith("0x")) {
+      const uploadedDocs: StoredDoc[] = Array.isArray(body.documents) ? body.documents : [];
+      const termo: StoredDoc | null = agreement.termoBlobId
+        ? { kind: "termo", blobId: agreement.termoBlobId, sealed: true, sha256: agreement.docSha256, filename: "termo-reconhecimento-divida.pdf" }
+        : null;
+
       await recordLoan({
         vaultId,
         owner: accountId,
@@ -66,6 +80,8 @@ export async function POST(req: NextRequest) {
         collateralPct: Number(body.collateralPct) || 0,
         coinType: String(body.coinType ?? ""),
         disburseDigest: result.digest,
+        docAnchorDigest: body.docAnchorDigest ? String(body.docAnchorDigest) : undefined,
+        documents: termo ? [...uploadedDocs, termo] : uploadedDocs,
         agreementId: agreement.id,
         agreementSha256: agreement.docSha256,
         selfieNullifier: kyc.selfieNullifier,

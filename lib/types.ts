@@ -12,11 +12,23 @@ export type PropertyData = {
   confidence?: number; // 0..1 model confidence
 };
 
-/** Result of encrypting + storing a document set on Walrus, anchored on Sui. */
-export type StorageResult = {
+/** The three required documents (plus the signed termo, added at disburse time). */
+export type DocKind = "cartaoCidadao" | "cadernetaPredial" | "declaracaoImi" | "termo";
+
+/** One document, sealed and stored as its own Walrus blob. */
+export type StoredDoc = {
+  kind: DocKind;
   blobId: string; // Walrus blob id
   sealed: boolean; // encrypted with Seal
-  sha256: string; // hash anchored on Sui
+  sha256: string;
+  filename: string;
+};
+
+/** Result of encrypting + storing the document set on Walrus, anchored on Sui. */
+export type StorageResult = {
+  documents: StoredDoc[]; // one blob per document
+  sealed: boolean; // encrypted with Seal
+  sha256: string; // combined hash, anchored on Sui
   anchorDigest: string; // Sui tx digest of the DocumentAnchored event
 };
 
@@ -95,6 +107,7 @@ export type AgreementSignature = {
   amountEur: number;
   signerNome: string;
   anchorDigest?: string;
+  termoBlobId?: string; // Walrus blob of the signed termo PDF
 };
 
 /** The full in-progress bridge session held client-side across the wizard. */
@@ -126,4 +139,13 @@ export function suiscanCoin(coinType: string, net = NET) {
 /** True when a value looks like a real on-chain id/digest (not a demo placeholder). */
 export function onChain(v?: string): boolean {
   return isReal(v) && !String(v).startsWith("demo");
+}
+
+// ── Walrus explorer link ─────────────────────────────────────────────
+export function walruscanBlob(blobId: string, net = NET) {
+  return `https://walruscan.com/${net}/blob/${blobId}`;
+}
+/** Walrus blob ids are base64url, so `onChain()`'s 0x/base58 test doesn't apply here. */
+export function onWalrus(id?: string): boolean {
+  return Boolean(id) && !String(id).startsWith("demo");
 }

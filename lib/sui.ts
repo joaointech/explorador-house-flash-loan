@@ -229,19 +229,44 @@ export async function getVault(vaultId: string): Promise<VaultState | null> {
   }
 }
 
-// ── Repay: mint eUSD to cover principal + interest + release collateral (1 PTB) ──
+// ── Repay: mint eUSD to cover the payment (full payoff or partial) in 1 PTB ──
 export async function repayLoan(params: {
   vaultId: string;
   drawUsdc: number;
   drawnAtMs?: number;
   rateBps?: number;
-}): Promise<{ digest: string; principalUsdc: number; interestUsdc: number; owedUsdc: number; demo: boolean }> {
+  /** Partial amount in eUSD (not base units). Omit — or pass >= owed — for a full payoff. */
+  amountUsdc?: number;
+}): Promise<{
+  digest: string;
+  principalUsdc: number;
+  interestUsdc: number;
+  owedUsdc: number;
+  paidUsdc: number;
+  remainingUsdc: number;
+  partial: boolean;
+  demo: boolean;
+}> {
   const EUSD_CAP = process.env.EUSD_TREASURY_CAP;
   const q = quoteOwed({ drawnUsdc: params.drawUsdc, drawnAtMs: params.drawnAtMs ?? 0, rateBps: params.rateBps ?? 0 });
+
+  // What actually gets paid, in eUSD base units. Anything at or above owed is a payoff.
+  const asked = params.amountUsdc == null ? q.owed : Math.round(params.amountUsdc * 1e6);
+  const paid = Math.min(Math.max(asked, 0), q.owed);
+  const partial = paid < q.owed;
+
+  // Mirrors bridge::house::repay_partial: interest first, the rest retires whole
+  // euros of principal, the sub-euro dust is booked as interest.
+  const interest = partial ? Math.min(paid, q.interest) : q.interest;
+  const principal = partial ? Math.floor((paid - interest) / 1e6) * 1e6 : q.principal;
+
   const result = {
-    principalUsdc: q.principal / 1e6,
-    interestUsdc: q.interest / 1e6,
+    principalUsdc: principal / 1e6,
+    interestUsdc: (paid - principal) / 1e6, // accrued interest + dust
     owedUsdc: q.owed / 1e6,
+    paidUsdc: paid / 1e6,
+    remainingUsdc: (q.principal - principal) / 1e6, // interest resets to 0 on partial
+    partial,
   };
   if (!suiConfigured() || !POOL || !EUSD_CAP || !params.vaultId?.startsWith("0x")) {
     return { digest: rndDigest(), ...result, demo: true };
@@ -249,11 +274,12 @@ export async function repayLoan(params: {
   const { Transaction } = await import("@mysten/sui/transactions");
   const { client, keypair } = await ctx();
 
-  // Mint owed plus a small cushion so on-chain clock skew (a few seconds of
-  // extra interest) can't underpay the assert. The Move refunds the overpayment
-  // to the sender (treasury), so the cushion is free.
-  const cushion = BigInt(1_000_000); // 1 eUSD
-  const mintAmount = BigInt(q.owed) + cushion;
+  // Full payoff mints a small cushion so on-chain clock skew (a few seconds of
+  // extra interest) can't underpay the assert — `repay` refunds it to the sender
+  // (treasury), so it's free. A partial mints *exactly* what was asked, because
+  // `repay_partial` keeps the whole coin; the caller must have validated the
+  // amount against a forward-dated interest quote.
+  const mintAmount = partial ? BigInt(paid) : BigInt(q.owed) + BigInt(1_000_000);
 
   const tx = new Transaction();
   const [coin] = tx.moveCall({
@@ -261,7 +287,7 @@ export async function repayLoan(params: {
     arguments: [tx.object(EUSD_CAP), tx.pure.u64(mintAmount)],
   });
   tx.moveCall({
-    target: `${PKG}::house::repay`,
+    target: `${PKG}::house::${partial ? "repay_partial" : "repay"}`,
     arguments: [tx.object(params.vaultId), tx.object(POOL), coin, tx.object(CLOCK)],
   });
 
@@ -326,5 +352,18 @@ export async function treasurySummary(): Promise<{ address: string; suiBalance: 
     return { address: sender, suiBalance: Number(BigInt(sui.totalBalance)) / 1e9, eusdSupply, demo: false };
   } catch {
     return { address: sender, suiBalance: 0, eusdSupply: 0, demo: false };
+  }
+}
+
+// ── HOUSE balance actually held in a wallet (non-zero only after payoff) ─
+export async function houseBalance(owner: string): Promise<number> {
+  const coinType = process.env.HOUSE_COIN_TYPE || `${PKG}::house::HOUSE`;
+  if (!suiConfigured() || !owner?.startsWith("0x")) return 0;
+  try {
+    const { client } = await ctx();
+    const bal = await client.getBalance({ owner, coinType });
+    return Number(BigInt(bal.totalBalance)); // HOUSE has 0 decimals
+  } catch {
+    return 0;
   }
 }

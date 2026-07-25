@@ -1,48 +1,92 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useWallet } from "@/components/WalletProvider";
+import RepayPanel from "@/components/RepayPanel";
 import type { Locale } from "@/lib/i18n";
-import type { BridgeSession } from "@/lib/types";
-import { suiscanCoin, suiscanObject, suiscanTx, onChain } from "@/lib/types";
+import type { DocKind } from "@/lib/types";
+import { suiscanCoin, suiscanObject, suiscanTx, onChain, walruscanBlob, onWalrus } from "@/lib/types";
+
+type Loan = {
+  vaultId: string;
+  owner: string;
+  article: string;
+  morada?: string;
+  vpt: number;
+  drawnUsdc: number; // original principal drawn
+  collateralPct: number;
+  coinType: string;
+  disburseDigest: string;
+  docAnchorDigest?: string;
+  repayDigest?: string;
+  repaidUsdc?: number;
+  documents?: { kind: DocKind; blobId: string; filename: string }[];
+  status: "active" | "repaid";
+  live?: {
+    drawnUsdc: number; // outstanding principal
+    locked: number;
+    rateBps?: number;
+    interestUsdc?: number;
+    owedUsdc?: number;
+    houseBalance?: number;
+  } | null;
+};
+
+const DOC_LABEL: Record<DocKind, { en: string; pt: string }> = {
+  cartaoCidadao: { en: "Cartão de Cidadão (ID)", pt: "Cartão de Cidadão" },
+  cadernetaPredial: { en: "Caderneta Predial", pt: "Caderneta Predial" },
+  declaracaoImi: { en: "Declaração de IMI", pt: "Declaração de IMI" },
+  termo: { en: "Signed debt acknowledgement", pt: "Termo de Reconhecimento de Dívida" },
+};
 
 export default function DashboardView({ lang }: { lang: Locale }) {
-  const [session, setSession] = useState<BridgeSession | null>(null);
+  const { accountId } = useWallet();
+  const [loan, setLoan] = useState<Loan | null>(null);
   const [ready, setReady] = useState(false);
 
-  useEffect(() => {
-    try {
-      const raw = sessionStorage.getItem("bridge.session");
-      if (raw) setSession(JSON.parse(raw));
-    } catch {
-      /* ignore */
+  const load = useCallback(async () => {
+    if (!accountId) {
+      setLoan(null);
+      setReady(true);
+      return;
     }
-    setReady(true);
-  }, []);
+    try {
+      const res = await fetch(`/api/sui/loans?owner=${encodeURIComponent(accountId)}`);
+      const json = await res.json();
+      const active = (json.loans ?? []).find((l: Loan) => l.status === "active") ?? null;
+      setLoan(active);
+    } catch {
+      setLoan(null);
+    } finally {
+      setReady(true);
+    }
+  }, [accountId]);
+
+  useEffect(() => { load(); }, [load]);
 
   const t = lang === "en"
     ? {
-        title: "Your bridge position", empty: "No active position yet.", start: "Start the bridge",
-        property: "Property", token: "House token", collateral: "Collateral locked", drawn: "Liquidity drawn",
-        status: "Status", active: "Active — repaid on sale", audit: "Audit trail",
-        walrus: "Documents (Walrus)", anchor: "Doc hash (Sui)", kyc: "KYC (World ID)", coin: "HOUSE equity (Sui)", vault: "Collateral vault", pay: "Disbursement (Sui tx)",
-        vpt: "VPT value", human: "Verified unique human",
+        title: "Your account", empty: "No active position yet.", start: "Start the bridge",
+        loaned: "Loaned", outstanding: "Outstanding", owed: "Owed now", paidBack: "Paid back", apr: "Borrow APR",
+        houseTitle: "HOUSE tokens", minted: "Total minted", explorador: "Held by explorador (collateral)", yours: "Held by you",
+        docsTitle: "Documents", anchor: "Doc hash (Sui)", vault: "Collateral vault", pay: "Disbursement (Sui tx)", repayTx: "Repayment (Sui tx)",
+        property: "Property", vpt: "VPT value",
       }
     : {
-        title: "A sua posição-ponte", empty: "Ainda não há posição ativa.", start: "Iniciar a ponte",
-        property: "Imóvel", token: "Token do imóvel", collateral: "Garantia bloqueada", drawn: "Liquidez levantada",
-        status: "Estado", active: "Ativa — reembolsada na venda", audit: "Rasto de auditoria",
-        walrus: "Documentos (Walrus)", anchor: "Hash do doc (Sui)", kyc: "KYC (World ID)", coin: "Capital HOUSE (Sui)", vault: "Vault de garantia", pay: "Pagamento (Transação Sui)",
-        vpt: "Valor VPT", human: "Humano único verificado",
+        title: "A sua conta", empty: "Ainda não há posição ativa.", start: "Iniciar a ponte",
+        loaned: "Emprestado", outstanding: "Em dívida (capital)", owed: "Em dívida agora", paidBack: "Reembolsado", apr: "TAN",
+        houseTitle: "Tokens HOUSE", minted: "Total emitido", explorador: "Detido pela explorador (garantia)", yours: "Detido por si",
+        docsTitle: "Documentos", anchor: "Hash do doc (Sui)", vault: "Vault de garantia", pay: "Pagamento (Transação Sui)", repayTx: "Reembolso (Transação Sui)",
+        property: "Imóvel", vpt: "Valor VPT",
       };
 
-  const fmt = (n: number) => n.toLocaleString(lang === "en" ? "en-US" : "pt-PT");
+  const fmt = (n: number) => n.toLocaleString(lang === "en" ? "en-US" : "pt-PT", { maximumFractionDigits: 2 });
+  const pct = (bps: number) => `${(bps / 100).toFixed(bps % 100 === 0 ? 0 : 2)}%`;
 
   if (!ready) return <div className="mx-auto max-w-5xl px-4 py-14" />;
 
-  const hasPosition = session?.disbursement?.digest || session?.token;
-
-  if (!hasPosition) {
+  if (!loan) {
     return (
       <div className="mx-auto max-w-5xl px-4 py-16 text-center">
         <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100 sm:text-3xl">{t.title}</h1>
@@ -53,8 +97,6 @@ export default function DashboardView({ lang }: { lang: Locale }) {
       </div>
     );
   }
-
-  const s = session!;
 
   const stat = (label: string, value: string, accent = false) => (
     <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200/70 dark:bg-[var(--color-card)] dark:ring-slate-700">
@@ -74,38 +116,60 @@ export default function DashboardView({ lang }: { lang: Locale }) {
     </div>
   );
 
+  const outstanding = loan.live?.drawnUsdc ?? loan.drawnUsdc;
+  const owedNow = loan.live?.owedUsdc ?? outstanding;
+  const locked = loan.live?.locked ?? 0;
+  const yours = Math.max(0, loan.vpt - locked) + (loan.live?.houseBalance ?? 0);
+
   return (
     <div className="mx-auto max-w-5xl px-4 py-12">
       <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100 sm:text-3xl">{t.title}</h1>
-      {s.property && (
-        <p className="mt-1 text-slate-600 dark:text-slate-400">
-          {s.property.morada}, {s.property.freguesia} · {s.property.concelho} — {t.vpt} €{fmt(s.property.vpt)}
-        </p>
-      )}
+      <p className="mt-1 text-slate-600 dark:text-slate-400">
+        {loan.morada}{loan.morada ? " · " : ""}{t.vpt} €{fmt(loan.vpt)}
+      </p>
 
       <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {stat(t.token, s.token?.symbol ?? "—")}
-        {stat(t.collateral, `${Math.round((s.collateralPct ?? 0) * 100)}%`)}
-        {stat(t.drawn, `$${fmt(s.disbursement?.amountUsdc ?? 0)}`, true)}
-        {stat(t.status, "●", false)}
+        {stat(t.loaned, `$${fmt(loan.drawnUsdc)}`)}
+        {stat(t.outstanding, `$${fmt(outstanding)}`)}
+        {stat(t.owed, `$${fmt(owedNow)}`, true)}
+        {stat(t.paidBack, `$${fmt(loan.repaidUsdc ?? 0)}`)}
       </div>
-      <p className="mt-2 text-sm text-emerald-600 dark:text-emerald-400">{t.active}</p>
+      {loan.live?.rateBps ? <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">{t.apr}: {pct(loan.live.rateBps)}</p> : null}
 
-      <div className="mt-10 rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200/70 dark:bg-[var(--color-card)] dark:ring-slate-700 sm:p-8">
-        <h2 className="mb-2 text-lg font-bold text-slate-800 dark:text-slate-100">{t.audit}</h2>
-        <div>
-          {s.storage && auditRow(t.walrus, s.storage.blobId)}
-          {s.storage && auditRow(t.anchor, s.storage.anchorDigest, onChain(s.storage.anchorDigest) ? suiscanTx(s.storage.anchorDigest) : undefined)}
-          {s.kyc && auditRow(t.kyc, `${t.human} · 🇵🇹 18+ · PRT (attested)`)}
-          {s.token && auditRow(t.coin, s.token.coinType, onChain(s.token.coinType) ? suiscanCoin(s.token.coinType) : undefined)}
-          {s.token?.vaultId && auditRow(t.vault, s.token.vaultId, onChain(s.token.vaultId) ? suiscanObject(s.token.vaultId) : undefined)}
-          {s.disbursement?.digest && auditRow(t.pay, s.disbursement.digest, onChain(s.disbursement.digest) ? suiscanTx(s.disbursement.digest) : undefined)}
+      <div className="mt-8 rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200/70 dark:bg-[var(--color-card)] dark:ring-slate-700 sm:p-8">
+        <h2 className="mb-4 text-lg font-bold text-slate-800 dark:text-slate-100">{t.houseTitle}</h2>
+        <div className="grid gap-4 sm:grid-cols-3">
+          {stat(t.minted, `${fmt(loan.vpt)} HOUSE`)}
+          {stat(t.explorador, `${fmt(locked)} HOUSE`)}
+          {stat(t.yours, `${fmt(yours)} HOUSE`)}
         </div>
-        {s.disbursement?.agentRationale && (
-          <p className="mt-4 rounded-xl border border-[var(--color-border)] bg-stone-50/60 p-3 text-sm text-slate-600 dark:bg-slate-800/40 dark:text-slate-300">
-            🤖 {s.disbursement.agentRationale}
-          </p>
-        )}
+      </div>
+
+      {loan.documents && loan.documents.length > 0 && (
+        <div className="mt-8 rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200/70 dark:bg-[var(--color-card)] dark:ring-slate-700 sm:p-8">
+          <h2 className="mb-2 text-lg font-bold text-slate-800 dark:text-slate-100">{t.docsTitle}</h2>
+          <div>
+            {loan.documents.map((doc) => (
+              <div key={doc.kind}>
+                {auditRow(DOC_LABEL[doc.kind]?.[lang] ?? doc.kind, doc.blobId, onWalrus(doc.blobId) ? walruscanBlob(doc.blobId) : undefined)}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="mt-8 rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200/70 dark:bg-[var(--color-card)] dark:ring-slate-700 sm:p-8">
+        <div>
+          {loan.docAnchorDigest && auditRow(t.anchor, loan.docAnchorDigest, onChain(loan.docAnchorDigest) ? suiscanTx(loan.docAnchorDigest) : undefined)}
+          {auditRow(t.vault, loan.vaultId, onChain(loan.vaultId) ? suiscanObject(loan.vaultId) : undefined)}
+          {loan.coinType && auditRow("HOUSE", loan.coinType, onChain(loan.coinType) ? suiscanCoin(loan.coinType) : undefined)}
+          {auditRow(t.pay, loan.disburseDigest, onChain(loan.disburseDigest) ? suiscanTx(loan.disburseDigest) : undefined)}
+          {loan.repayDigest && auditRow(t.repayTx, loan.repayDigest, onChain(loan.repayDigest) ? suiscanTx(loan.repayDigest) : undefined)}
+        </div>
+      </div>
+
+      <div className="mt-8">
+        <RepayPanel lang={lang} vaultId={loan.vaultId} owedUsdc={owedNow} onRepaid={load} />
       </div>
     </div>
   );

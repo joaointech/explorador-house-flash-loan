@@ -1,6 +1,7 @@
 import "server-only";
 import { promises as fs } from "fs";
 import path from "path";
+import type { StoredDoc } from "./types";
 
 /**
  * Tiny server-side loan registry (JSON file). Sui shared objects can't be listed
@@ -19,7 +20,15 @@ export type LoanEntry = {
   collateralPct: number;
   coinType: string;
   disburseDigest: string;
+  // Sui tx digest of the DocumentAnchored event for the documents below (from store-docs).
+  docAnchorDigest?: string;
   repayDigest?: string;
+  // Cumulative eUSD paid back. On-chain only tracks what's *outstanding*, not history.
+  repaidUsdc?: number;
+  // Every settlement digest, oldest first. `repayDigest` stays the latest one.
+  repayDigests?: string[];
+  // The documents sealed + stored on Walrus at origination (id, caderneta, IMI, termo).
+  documents?: StoredDoc[];
   // The signed Termo de Reconhecimento e Confissão de Dívida bound at origination.
   agreementId?: string;
   agreementSha256?: string;
@@ -62,11 +71,30 @@ export async function getLoan(vaultId: string): Promise<LoanEntry | undefined> {
   return (await readAll()).find((l) => l.vaultId === vaultId);
 }
 
-export async function markRepaid(vaultId: string, repayDigest: string): Promise<void> {
+/** Record a settlement (full or partial). `remainingUsdc <= 0` closes the loan. */
+export async function recordRepayment(
+  vaultId: string,
+  repayDigest: string,
+  paidUsdc: number,
+  remainingUsdc: number,
+): Promise<void> {
   const list = await readAll();
   const i = list.findIndex((l) => l.vaultId === vaultId);
-  if (i >= 0) {
-    list[i] = { ...list[i], status: "repaid", repayDigest };
-    await writeAll(list);
-  }
+  if (i < 0) return;
+  const prev = list[i];
+  list[i] = {
+    ...prev,
+    repaidUsdc: (prev.repaidUsdc ?? 0) + paidUsdc,
+    repayDigest,
+    repayDigests: [...(prev.repayDigests ?? []), repayDigest],
+    status: remainingUsdc <= 0 ? "repaid" : "active",
+  };
+  await writeAll(list);
+}
+
+/** Does this Sui address already have an open loan? The one-loan-per-account gate. */
+export async function activeLoanForOwner(owner: string, exceptVaultId?: string): Promise<boolean> {
+  if (!owner) return false;
+  const loans = await listLoans(owner);
+  return loans.some((l) => l.status === "active" && l.vaultId !== exceptVaultId);
 }

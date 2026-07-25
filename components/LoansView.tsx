@@ -2,13 +2,9 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { IDKitRequestWidget, selfieCheckLegacy, IDKitErrorCodes } from "@worldcoin/idkit";
 import { useWallet } from "@/components/WalletProvider";
 import type { Locale } from "@/lib/i18n";
-import { suiscanTx, suiscanObject, suiscanCoin, onChain, WORLD_ACTIONS } from "@/lib/types";
-import { fetchRpContext, submitProof, SANDBOX, type RpContext } from "@/lib/worldid-client";
-
-const APP_ID = (process.env.NEXT_PUBLIC_WORLD_APP_ID || "app_") as `app_${string}`;
+import { suiscanTx, suiscanObject, suiscanCoin, onChain } from "@/lib/types";
 
 type Loan = {
   vaultId: string;
@@ -39,55 +35,42 @@ type Pool = { capacity: number; totalDrawn: number; utilizationBps: number; curr
 
 const short = (a: string) => (a && a.length > 16 ? `${a.slice(0, 8)}…${a.slice(-6)}` : a || "—");
 
+/** Read-only protocol view: treasury + pool health and every loan. Repayment
+ * lives on the borrower's own account page (components/DashboardView.tsx). */
 export default function LoansView({ lang }: { lang: Locale }) {
   const { accountId } = useWallet();
   const [loans, setLoans] = useState<Loan[]>([]);
   const [treasury, setTreasury] = useState<Treasury | null>(null);
   const [pool, setPool] = useState<Pool | null>(null);
   const [loading, setLoading] = useState(true);
-  const [repaying, setRepaying] = useState<string | null>(null);
-  // Continuity re-auth: the vault awaiting a Selfie Check before we'll repay it.
-  const [gateVault, setGateVault] = useState<string | null>(null);
-  const [gateCtx, setGateCtx] = useState<RpContext | null>(null);
-  // Keyed by vault so the message stays attached to its card after the gate closes.
-  const [gateError, setGateError] = useState<{ vaultId: string; msg: string } | null>(null);
 
   const fmt = (n: number) => n.toLocaleString(lang === "en" ? "en-US" : "pt-PT");
   const pct = (bps: number) => `${(bps / 100).toFixed(bps % 100 === 0 ? 0 : 2)}%`;
 
   const t = lang === "en"
     ? {
-        title: "Loan management", sub: "Active bridge positions, live from Sui. Repay to settle the eUSD draw and release the collateral back to the owner.",
-        empty: "No loans yet.", start: "Start the bridge",
+        title: "Loan management", sub: "Every bridge position, live from Sui. Visit your account page to repay one of yours.",
+        empty: "No loans yet.", start: "Start the bridge", myAccount: "Your account",
         treasury: "Treasury", tSui: "SUI balance", tEusd: "eUSD minted", tAddr: "Address",
         util: "Pool utilization", curRate: "borrow APR now", yieldEarned: "Yield earned",
         rate: "Borrow APR", interest: "Interest accrued", owed: "Owed now", proj90: "≈ interest if held 90 days",
         property: "Property", drawn: "Drawn", collateral: "Collateral", vaultL: "Vault", coinL: "HOUSE coin", disburseL: "Disbursement", repayL: "Repayment",
-        active: "Active", repaid: "Repaid", repay: "Repay & release", repayingT: "Repaying…",
-        gate: "Confirming it's you…",
-        gateNote: "Repaying releases your collateral, so we re-check with a live selfie that it's you — no documents, no personal data.",
-        mismatch: "This World ID isn't the one that pledged this property. Only the original borrower can repay and release the collateral.",
-        gateErr: "We couldn't confirm it's you. Try again.",
+        active: "Active", repaid: "Repaid",
       }
     : {
-        title: "Gestão de empréstimos", sub: "Posições-ponte ativas, em tempo real na Sui. Reembolse para liquidar o levantamento em eUSD e libertar a garantia ao proprietário.",
-        empty: "Ainda não há empréstimos.", start: "Iniciar a ponte",
+        title: "Gestão de empréstimos", sub: "Todas as posições-ponte, em tempo real na Sui. Visite a sua conta para reembolsar uma sua.",
+        empty: "Ainda não há empréstimos.", start: "Iniciar a ponte", myAccount: "A sua conta",
         treasury: "Tesouraria", tSui: "Saldo SUI", tEusd: "eUSD emitido", tAddr: "Endereço",
         util: "Utilização do pool", curRate: "TAN agora", yieldEarned: "Rendimento gerado",
         rate: "TAN", interest: "Juros acumulados", owed: "Em dívida agora", proj90: "≈ juros se mantido 90 dias",
         property: "Imóvel", drawn: "Levantado", collateral: "Garantia", vaultL: "Vault", coinL: "Moeda HOUSE", disburseL: "Pagamento", repayL: "Reembolso",
-        active: "Ativo", repaid: "Reembolsado", repay: "Reembolsar & libertar", repayingT: "A reembolsar…",
-        gate: "A confirmar que é você…",
-        gateNote: "Reembolsar liberta a sua garantia, por isso reconfirmamos com uma selfie ao vivo que é você — sem documentos, sem dados pessoais.",
-        mismatch: "Este World ID não é o que deu este imóvel como garantia. Só o mutuário original pode reembolsar e libertar a garantia.",
-        gateErr: "Não conseguimos confirmar que é você. Tente de novo.",
+        active: "Ativo", repaid: "Reembolsado",
       };
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const q = accountId ? `?owner=${encodeURIComponent(accountId)}` : "";
-      const res = await fetch(`/api/sui/loans${q}`);
+      const res = await fetch("/api/sui/loans");
       const json = await res.json();
       setLoans(json.loans ?? []);
       setTreasury(json.treasury ?? null);
@@ -97,59 +80,9 @@ export default function LoansView({ lang }: { lang: Locale }) {
     } finally {
       setLoading(false);
     }
-  }, [accountId]);
+  }, []);
 
   useEffect(() => { load(); }, [load]);
-
-  /** Step 1 of repayment: prove you're still the human who pledged this house. */
-  const startRepay = async (vaultId: string) => {
-    setGateError(null);
-    setRepaying(vaultId);
-    // Dev bypass: no widget, no phone — same dummy proof the server fakes.
-    if (SANDBOX) {
-      await finishRepay(vaultId, {});
-      return;
-    }
-    try {
-      setGateCtx(await fetchRpContext("selfie"));
-      setGateVault(vaultId);
-    } catch {
-      setGateError({ vaultId, msg: t.gateErr });
-      setRepaying(null);
-    }
-  };
-
-  /** Step 2: the backend re-checks the nullifier against the one bound at origination. */
-  const finishRepay = async (vaultId: string, result: unknown) => {
-    try {
-      const { token } = await submitProof("selfie", result);
-      const res = await fetch("/api/sui/repay", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ vaultId, kycToken: token }),
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error ?? "repay_failed");
-      await load();
-    } catch (e) {
-      const code = e instanceof Error ? e.message : "";
-      setGateError({ vaultId, msg: code === "kyc_mismatch" ? t.mismatch : t.gateErr });
-    } finally {
-      setGateVault(null);
-      setGateCtx(null);
-      setRepaying(null);
-    }
-  };
-
-  const gateFailed = (vaultId: string, code: IDKitErrorCodes) => {
-    setGateError({
-      vaultId,
-      msg: code === IDKitErrorCodes.UserRejected ? "" : t.gateErr,
-    });
-    setGateVault(null);
-    setGateCtx(null);
-    setRepaying(null);
-  };
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-12">
@@ -216,6 +149,7 @@ export default function LoansView({ lang }: { lang: Locale }) {
             const owedNow = l.live?.owedUsdc ?? drawn;
             // Tangible figure for a demo where live elapsed time is only seconds.
             const proj90 = (drawn * rateBps * 90) / (10000 * 365);
+            const isMine = accountId && l.owner === accountId;
             return (
               <div key={l.vaultId} className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200/70 dark:bg-[var(--color-card)] dark:ring-slate-700 sm:p-7">
                 <div className="flex flex-wrap items-start justify-between gap-4">
@@ -262,18 +196,11 @@ export default function LoansView({ lang }: { lang: Locale }) {
                   {l.repayDigest && onChain(l.repayDigest) && <a href={suiscanTx(l.repayDigest)} target="_blank" rel="noreferrer" className="text-emerald-600 hover:underline dark:text-emerald-400">{t.repayL} ↗</a>}
                 </div>
 
-                {!isRepaid && (
+                {!isRepaid && isMine && (
                   <div className="mt-5">
-                    <button
-                      type="button"
-                      onClick={() => startRepay(l.vaultId)}
-                      disabled={repaying === l.vaultId}
-                      className="inline-flex h-11 items-center justify-center rounded-lg bg-[var(--color-primary)] px-6 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:opacity-60"
-                    >
-                      {repaying === l.vaultId ? (gateVault === l.vaultId ? t.gate : t.repayingT) : `↩ ${t.repay}`}
-                    </button>
-                    <p className="mt-2 max-w-md text-xs leading-relaxed text-slate-500 dark:text-slate-400">🤳 {t.gateNote}</p>
-                    {gateError?.vaultId === l.vaultId && <p className="mt-2 text-sm text-[var(--color-danger)]">{gateError.msg}</p>}
+                    <Link href={`/${lang}/dashboard`} className="inline-flex h-11 items-center justify-center rounded-lg bg-[var(--color-primary)] px-6 text-sm font-semibold text-white transition hover:bg-blue-700">
+                      {t.myAccount} →
+                    </Link>
                   </div>
                 )}
               </div>
@@ -281,26 +208,6 @@ export default function LoansView({ lang }: { lang: Locale }) {
           })
         )}
       </div>
-
-      {/* Continuity gate — Selfie Check only. The document attributes were established at
-          origination and don't change; what we re-check is that the same human is present. */}
-      {gateVault && gateCtx && (
-        <IDKitRequestWidget
-          open
-          onOpenChange={(o) => { if (!o) { setGateVault(null); setGateCtx(null); setRepaying(null); } }}
-          app_id={APP_ID}
-          action={WORLD_ACTIONS.selfie}
-          rp_context={gateCtx}
-          environment="staging"
-          allow_legacy_proofs
-          require_user_presence
-          language="en"
-          preset={selfieCheckLegacy({ signal: gateVault })}
-          handleVerify={(result) => finishRepay(gateVault, result)}
-          onSuccess={() => { /* finishRepay already reloaded the list */ }}
-          onError={(code) => gateFailed(gateVault, code)}
-        />
-      )}
     </div>
   );
 }

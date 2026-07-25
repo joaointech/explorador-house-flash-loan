@@ -6,7 +6,9 @@ import type { AgreementSignature, Disbursement } from "@/lib/types";
 import { suiscanTx, onChain } from "@/lib/types";
 import { StepHeading, Card, PrimaryButton, SecondaryButton, Badge, Spinner, ProofRow } from "../ui";
 
-type Screen = "document" | "cmd-phone" | "cmd-otp" | "signing" | "result";
+type Screen = "document" | "cmd-phone" | "cmd-verifying" | "cmd-otp" | "signing" | "result";
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 const PT_MOBILE = /^(\+351\s?)?9\d{2}\s?\d{3}\s?\d{3}$/;
 const short = (s: string) => (s.length > 18 ? `${s.slice(0, 10)}…${s.slice(-6)}` : s);
@@ -37,7 +39,7 @@ export default function StepSign({ lang, session, patch, next, back, canBack }: 
         sign: "Sign with Chave Móvel Digital", back: "Back",
         cmdTitle: "Chave Móvel Digital", demo: "DEMO",
         phoneLabel: "Mobile number", passwordLabel: "Password", noSms: "No SMS is sent — this is a simulation.",
-        authenticate: "Authenticate", otpTitle: "Security code",
+        authenticate: "Authenticate", verifying: "Verifying your credentials…", otpTitle: "Security code",
         otpNote: "Enter any 4 digits — simulation.", otpLabel: "Code",
         signDoc: "Sign document", signing: "Signing & executing…",
         agent: "Treasury AI agent", approved: "Approved & executed", declined: "Declined",
@@ -55,7 +57,7 @@ export default function StepSign({ lang, session, patch, next, back, canBack }: 
         sign: "Assinar com Chave Móvel Digital", back: "Voltar",
         cmdTitle: "Chave Móvel Digital", demo: "DEMO",
         phoneLabel: "Número de telemóvel", passwordLabel: "Palavra-passe", noSms: "Não é enviado SMS — isto é uma simulação.",
-        authenticate: "Autenticar", otpTitle: "Código de segurança",
+        authenticate: "Autenticar", verifying: "A verificar as suas credenciais…", otpTitle: "Código de segurança",
         otpNote: "Introduza quaisquer 4 dígitos — simulação.", otpLabel: "Código",
         signDoc: "Assinar documento", signing: "A assinar & executar…",
         agent: "Agente IA da tesouraria", approved: "Aprovado & executado", declined: "Recusado",
@@ -65,12 +67,14 @@ export default function StepSign({ lang, session, patch, next, back, canBack }: 
         otpErr: "Introduza o código de 4 dígitos.",
       };
 
-  const submitPhone = () => {
+  const submitPhone = async () => {
     if (!PT_MOBILE.test(phone.trim()) || password.trim().length === 0) {
       setError(t.phoneErr);
       return;
     }
     setError(null);
+    setScreen("cmd-verifying");
+    await sleep(5000);
     setScreen("cmd-otp");
   };
 
@@ -107,6 +111,8 @@ export default function StepSign({ lang, session, patch, next, back, canBack }: 
           vpt: session.property?.vpt ?? 0, collateralPct: session.collateralPct, drawAmount,
           kycToken: session.kyc?.token, accountId: session.accountId, vaultId: session.token?.vaultId,
           article: session.property?.artigoMatricial, morada: session.property?.morada, coinType: session.token?.coinType,
+          documents: session.storage?.documents ?? [],
+          docAnchorDigest: session.storage?.anchorDigest,
         }),
       });
       const disburseJson = await disburseRes.json();
@@ -163,6 +169,10 @@ export default function StepSign({ lang, session, patch, next, back, canBack }: 
               <SecondaryButton onClick={() => setScreen("document")}>{t.back}</SecondaryButton>
             </div>
           </CmdScreen>
+        ) : screen === "cmd-verifying" ? (
+          <div className="flex items-center gap-3 py-6 text-sm text-slate-600 dark:text-slate-400">
+            <Spinner /> {t.verifying}
+          </div>
         ) : screen === "cmd-otp" ? (
           <CmdScreen title={t.otpTitle} demo={t.demo} note={t.otpNote}>
             <Field label={t.otpLabel} value={otp} onChange={setOtp} placeholder="0000" maxLength={4} />

@@ -22,6 +22,9 @@ module bridge::house {
     const EInsufficientRepayment: u64 = 1;
     /// Caller is not the pool admin (treasury).
     const EUnauthorized: u64 = 2;
+    /// Partial payment doesn't even cover interest accrued so far. Accepting it
+    /// would silently forgive interest, because the clock restarts on repay.
+    const EBelowAccruedInterest: u64 = 3;
 
     // ── Interest-rate model (utilization curve, à la Aave/Suilend) ──────
     /// Annual percentage rates, in basis points (10000 = 100%).
@@ -69,6 +72,14 @@ module bridge::house {
     public struct DocumentAnchored has copy, drop { sha256: vector<u8>, article: String }
     public struct CollateralLocked has copy, drop { vault: address, locked: u64, drawn_usdc: u64, rate_bps: u64, utilization_bps: u64 }
     public struct LoanRepaid has copy, drop { vault: address, owner: address, principal_eusd: u64, interest_eusd: u64, repaid_eusd: u64, released_house: u64 }
+    public struct LoanRepaidPartial has copy, drop {
+        vault: address,
+        owner: address,
+        paid_eusd: u64,       // total eUSD taken from the payer
+        interest_eusd: u64,   // interest settled (incl. the sub-euro dust)
+        principal_eusd: u64,  // principal actually retired, in eUSD base units
+        remaining_usdc: u64,  // principal still outstanding, whole EUR/USD
+    }
 
     /// Publish-time: create the HOUSE currency, hand the treasury cap to the
     /// deployer (the protocol treasury), and open the shared lending Pool.
@@ -211,6 +222,67 @@ module bridge::house {
             interest_eusd: interest,
             repaid_eusd: owed,
             released_house: released_amt,
+        });
+    }
+
+    /// Repay *part* of the loan. Accrued interest is settled first, whatever is
+    /// left retires whole euros of principal, and the interest clock restarts on
+    /// the reduced principal. Collateral stays locked and `repaid` stays false —
+    /// only a full `repay` releases the equity.
+    ///
+    /// If `payment` already covers principal + interest this just delegates to
+    /// `repay` (on Sui an entry function is callable from Move code, cf.
+    /// `sui::pay::split_vec` calling `sui::pay::split`), so a borrower who pays
+    /// the whole thing through this path still gets settled and refunded.
+    public entry fun repay_partial(
+        vault: &mut CollateralVault,
+        pool: &mut Pool,
+        payment: Coin<EUSD>,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        let now = clock::timestamp_ms(clock);
+        let paid = coin::value(&payment);
+        let interest = interest_owed(vault, now);
+        let owed = vault.drawn_usdc * 1_000_000 + interest; // == total_owed(vault, now)
+
+        if (paid >= owed) {
+            repay(vault, pool, payment, clock, ctx);
+            return
+        };
+
+        // Interest first. Below it, the clock reset below would forgive the shortfall.
+        assert!(paid > 0 && paid >= interest, EBelowAccruedInterest);
+
+        // The rest retires whole euros of principal (`drawn_usdc` is u64 EUR);
+        // the sub-euro remainder is booked as protocol interest, not lost.
+        let to_principal = paid - interest;
+        let principal_units = to_principal / 1_000_000;
+        let interest_booked = interest + (to_principal % 1_000_000);
+
+        // The borrower chose this amount, so the treasury takes the whole coin —
+        // no split, no refund, nothing left dangling.
+        transfer::public_transfer(payment, vault.treasury);
+
+        // paid < owed  =>  to_principal < drawn_usdc * 1_000_000  =>  principal_units < drawn_usdc,
+        // so this never underflows and never zeroes the loan (that's `repay`'s job).
+        vault.drawn_usdc = vault.drawn_usdc - principal_units;
+        vault.drawn_at_ms = now; // clock restarts on the reduced principal
+
+        if (pool.total_drawn >= principal_units) {
+            pool.total_drawn = pool.total_drawn - principal_units;
+        } else {
+            pool.total_drawn = 0;
+        };
+        pool.total_interest = pool.total_interest + interest_booked;
+
+        event::emit(LoanRepaidPartial {
+            vault: vault.id.to_address(),
+            owner: vault.owner,
+            paid_eusd: paid,
+            interest_eusd: interest_booked,
+            principal_eusd: principal_units * 1_000_000,
+            remaining_usdc: vault.drawn_usdc,
         });
     }
 
@@ -371,6 +443,117 @@ module bridge::house {
         // Pay only principal, missing the accrued interest -> must abort.
         let payment = coin::mint_for_testing<EUSD>(200_000 * 1_000_000, ctx);
         repay(&mut vault, &mut pool, payment, &clock, ctx);
+
+        std::unit_test::destroy(vault);
+        std::unit_test::destroy(pool);
+        clock::destroy_for_testing(clock);
+        sui::test_scenario::end(sc);
+    }
+
+    #[test]
+    fun test_repay_partial_reduces_principal_and_resets_clock() {
+        let mut sc = sui::test_scenario::begin(@0xA);
+        let ctx = sui::test_scenario::ctx(&mut sc);
+        let mut clock = clock::create_for_testing(ctx);
+        let mut pool = mk_pool(1_000_000, 200_000, ctx);
+        let mut vault = mk_vault(200_000, 200_000, 725, 0, ctx);
+        vault.locked = 60_000; // collateral pledged at draw
+
+        // Half a year at 7.25% on €200k -> 7,250 eUSD interest.
+        clock::set_for_testing(&mut clock, MS_PER_YEAR / 2);
+        // Pay interest + €20,000 of principal.
+        let payment = coin::mint_for_testing<EUSD>(7_250 * 1_000_000 + 20_000 * 1_000_000, ctx);
+        repay_partial(&mut vault, &mut pool, payment, &clock, ctx);
+
+        assert!(vault.drawn_usdc == 180_000, 0);                  // principal reduced
+        assert!(vault.drawn_at_ms == MS_PER_YEAR / 2, 1);         // clock restarted
+        assert!(!vault.repaid, 2);                                // loan still open
+        assert!(vault.locked == 60_000, 3);                       // collateral still locked
+        assert!(balance::value(&vault.equity) == 200_000, 4);     // equity NOT released
+        assert!(pool.total_drawn == 180_000, 5);                  // capacity partly freed
+        assert!(pool.total_interest == 7_250 * 1_000_000, 6);     // yield booked
+
+        // Interest on the reduced principal, from the new clock: 0 elapsed -> 0.
+        assert!(interest_owed(&vault, MS_PER_YEAR / 2) == 0, 7);
+
+        std::unit_test::destroy(vault);
+        std::unit_test::destroy(pool);
+        clock::destroy_for_testing(clock);
+        sui::test_scenario::end(sc);
+    }
+
+    #[test]
+    fun test_repay_partial_books_sub_euro_dust_as_interest() {
+        let mut sc = sui::test_scenario::begin(@0xA);
+        let ctx = sui::test_scenario::ctx(&mut sc);
+        let mut clock = clock::create_for_testing(ctx);
+        let mut pool = mk_pool(1_000_000, 200_000, ctx);
+        let mut vault = mk_vault(200_000, 200_000, 725, 0, ctx);
+
+        clock::set_for_testing(&mut clock, MS_PER_YEAR / 2);
+        // Interest + 1.75 eUSD: €1 of principal, €0.75 of dust.
+        let payment = coin::mint_for_testing<EUSD>(7_250 * 1_000_000 + 1_750_000, ctx);
+        repay_partial(&mut vault, &mut pool, payment, &clock, ctx);
+
+        assert!(vault.drawn_usdc == 199_999, 0);
+        assert!(pool.total_drawn == 199_999, 1);
+        assert!(pool.total_interest == 7_250 * 1_000_000 + 750_000, 2); // dust -> interest
+
+        std::unit_test::destroy(vault);
+        std::unit_test::destroy(pool);
+        clock::destroy_for_testing(clock);
+        sui::test_scenario::end(sc);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = EBelowAccruedInterest)]
+    fun test_repay_partial_rejects_below_accrued_interest() {
+        let mut sc = sui::test_scenario::begin(@0xA);
+        let ctx = sui::test_scenario::ctx(&mut sc);
+        let mut clock = clock::create_for_testing(ctx);
+        let mut pool = mk_pool(1_000_000, 200_000, ctx);
+        let mut vault = mk_vault(200_000, 200_000, 725, 0, ctx);
+
+        clock::set_for_testing(&mut clock, MS_PER_YEAR / 2);
+        // One base unit short of the accrued interest -> must abort.
+        let payment = coin::mint_for_testing<EUSD>(7_250 * 1_000_000 - 1, ctx);
+        repay_partial(&mut vault, &mut pool, payment, &clock, ctx);
+
+        std::unit_test::destroy(vault);
+        std::unit_test::destroy(pool);
+        clock::destroy_for_testing(clock);
+        sui::test_scenario::end(sc);
+    }
+
+    #[test]
+    fun test_repay_partial_then_full_payoff_releases_equity() {
+        let mut sc = sui::test_scenario::begin(@0xA);
+        let ctx = sui::test_scenario::ctx(&mut sc);
+        let mut clock = clock::create_for_testing(ctx);
+        let mut pool = mk_pool(1_000_000, 200_000, ctx);
+        let mut vault = mk_vault(200_000, 200_000, 725, 0, ctx);
+        vault.locked = 60_000;
+
+        // Leg 1: half a year, pay interest + €20k.
+        clock::set_for_testing(&mut clock, MS_PER_YEAR / 2);
+        let p1 = coin::mint_for_testing<EUSD>(7_250 * 1_000_000 + 20_000 * 1_000_000, ctx);
+        repay_partial(&mut vault, &mut pool, p1, &clock, ctx);
+        assert!(vault.drawn_usdc == 180_000, 0);
+
+        // Leg 2: another half year on €180k -> 6,525 eUSD. Pay it all through
+        // repay_partial: it must notice paid >= owed and delegate to repay.
+        clock::set_for_testing(&mut clock, MS_PER_YEAR);
+        let owed = total_owed(&vault, MS_PER_YEAR);
+        assert!(owed == (180_000 + 6_525) * 1_000_000, 1);
+        let p2 = coin::mint_for_testing<EUSD>(owed, ctx);
+        repay_partial(&mut vault, &mut pool, p2, &clock, ctx);
+
+        assert!(vault.repaid, 2);
+        assert!(vault.drawn_usdc == 0, 3);
+        assert!(vault.locked == 0, 4);
+        assert!(balance::value(&vault.equity) == 0, 5);            // equity released
+        assert!(pool.total_drawn == 0, 6);
+        assert!(pool.total_interest == (7_250 + 6_525) * 1_000_000, 7);
 
         std::unit_test::destroy(vault);
         std::unit_test::destroy(pool);

@@ -2,6 +2,7 @@ import "server-only";
 import { promises as fs } from "fs";
 import path from "path";
 import { createHash, randomUUID } from "crypto";
+import { storeEncryptedDocuments } from "./walrus";
 
 /**
  * Server-side registry for signed debt-acknowledgement agreements (Termo de
@@ -25,6 +26,7 @@ export type SignedAgreement = {
   signer: { nome: string; phoneMasked: string };
   method: "cmd-mock";
   anchorDigest?: string;
+  termoBlobId?: string; // Walrus blob of the signed termo PDF
   demo: true;
 };
 
@@ -39,6 +41,19 @@ export function docSha256(): Promise<string> {
     docHashPromise = fs.readFile(DOC).then((buf) => createHash("sha256").update(buf).digest("hex"));
   }
   return docHashPromise;
+}
+
+let termoBlobPromise: Promise<string> | null = null;
+
+/** Walrus blob id of the (shared, unsigned-template) termo PDF, uploaded once and memoised. */
+export function termoBlobId(): Promise<string> {
+  if (!termoBlobPromise) {
+    termoBlobPromise = fs
+      .readFile(DOC)
+      .then((buf) => storeEncryptedDocuments(new Uint8Array(buf)))
+      .then((r) => r.blobId);
+  }
+  return termoBlobPromise;
 }
 
 /** Masks a phone number for storage: keep the country code + last 2 digits. */
@@ -61,11 +76,12 @@ async function writeAll(list: SignedAgreement[]): Promise<void> {
 }
 
 export async function signAgreement(
-  params: Omit<SignedAgreement, "id" | "signedAt" | "docSha256" | "method" | "demo">,
+  params: Omit<SignedAgreement, "id" | "signedAt" | "docSha256" | "termoBlobId" | "method" | "demo">,
 ): Promise<SignedAgreement> {
   const agreement: SignedAgreement = {
     id: randomUUID(),
     docSha256: await docSha256(),
+    termoBlobId: await termoBlobId(),
     signedAt: Date.now(),
     method: "cmd-mock",
     demo: true,

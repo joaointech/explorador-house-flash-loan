@@ -43,6 +43,7 @@ export async function POST(req: NextRequest) {
         amountEur: agreement.amountEur,
         signerNome: agreement.signer.nome,
         anchorDigest: agreement.anchorDigest,
+        termoBlobId: agreement.termoBlobId,
       },
     });
   } catch (e: unknown) {

@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import type { Locale } from "@/lib/i18n";
 import type { BridgeSession } from "@/lib/types";
+import { useWallet } from "@/components/WalletProvider";
 import Stepper, { type StepMeta } from "./Stepper";
 import StepConnect from "./steps/StepConnect";
 import StepDocuments from "./steps/StepDocuments";
@@ -28,9 +30,35 @@ const STEP_LABELS: Record<Locale, string[]> = {
 };
 
 export default function BridgeWizard({ lang }: { lang: Locale }) {
+  const router = useRouter();
+  const { accountId } = useWallet();
   const [step, setStep] = useState(0);
   const [done, setDone] = useState<Set<number>>(new Set());
   const [session, setSession] = useState<BridgeSession>({});
+  // One loan per account: if this address already has an active position, this
+  // is the wrong page — send them to their account instead of re-running the wizard.
+  const [checkedAccount, setCheckedAccount] = useState(false);
+
+  useEffect(() => {
+    if (!accountId) {
+      setCheckedAccount(true);
+      return;
+    }
+    let cancelled = false;
+    setCheckedAccount(false);
+    fetch(`/api/sui/loans?owner=${encodeURIComponent(accountId)}`)
+      .then((r) => r.json())
+      .then((json) => {
+        if (cancelled) return;
+        const hasActive = (json.loans ?? []).some((l: { status: string }) => l.status === "active");
+        if (hasActive) router.replace(`/${lang}/dashboard`);
+        else setCheckedAccount(true);
+      })
+      .catch(() => !cancelled && setCheckedAccount(true));
+    return () => {
+      cancelled = true;
+    };
+  }, [accountId, lang, router]);
 
   const steps: StepMeta[] = useMemo(
     () => STEP_LABELS[lang].map((label, i) => ({ key: String(i), label })),
@@ -45,6 +73,9 @@ export default function BridgeWizard({ lang }: { lang: Locale }) {
       /* ignore */
     }
   }, [session]);
+
+  // Blank while we check for an existing loan — avoids flashing step 0 before a redirect.
+  if (!checkedAccount) return <div className="mx-auto max-w-5xl px-4 py-14" />;
 
   const patch = (p: Partial<BridgeSession>) => setSession((s) => ({ ...s, ...p }));
   const next = () => {

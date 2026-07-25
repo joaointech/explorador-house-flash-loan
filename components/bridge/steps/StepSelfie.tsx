@@ -19,7 +19,6 @@ import {
   Badge,
   Card,
   PrimaryButton,
-  ProofRow,
   SecondaryButton,
   Spinner,
   StepHeading,
@@ -27,8 +26,6 @@ import {
 
 const APP_ID = (process.env.NEXT_PUBLIC_WORLD_APP_ID ||
   "app_") as `app_${string}`;
-const short = (s: string) =>
-  s.length > 18 ? `${s.slice(0, 10)}…${s.slice(-6)}` : s;
 
 export default function StepSelfie({
   lang,
@@ -56,7 +53,6 @@ export default function StepSelfie({
         waiting: "Open World App to continue",
         okTitle: "Eligible",
         live: "Live human",
-        selfieNull: "Selfie nullifier",
         cont: "Continue",
         back: "Back",
         retry: "Try again",
@@ -73,7 +69,6 @@ export default function StepSelfie({
         waiting: "Abra a World App para continuar",
         okTitle: "Elegível",
         live: "Humano presente",
-        selfieNull: "Nullifier da selfie",
         cont: "Continuar",
         back: "Voltar",
         retry: "Tentar de novo",
@@ -164,7 +159,6 @@ export default function StepSelfie({
               <Badge tone="green">✓ {t.live}</Badge>
               {kyc.sandbox && <Badge tone="amber">⚠ {t.sandbox}</Badge>}
             </div>
-            <ProofRow label={t.selfieNull} value={short(kyc.selfieNullifier)} />
             <div className="flex items-center gap-3 pt-1">
               {canBack && (
                 <SecondaryButton onClick={back}>← {t.back}</SecondaryButton>

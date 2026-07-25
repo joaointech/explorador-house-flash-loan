@@ -6,10 +6,9 @@ import type { StepProps } from "../BridgeWizard";
 import type { IdentityResult } from "@/lib/types";
 import { WORLD_ACTIONS, IDENTITY_ATTRIBUTES } from "@/lib/types";
 import { fetchRpContext, submitProof, SANDBOX, type RpContext } from "@/lib/worldid-client";
-import { StepHeading, Card, PrimaryButton, SecondaryButton, Badge, Spinner, ProofRow } from "../ui";
+import { StepHeading, Card, PrimaryButton, SecondaryButton, Badge, Spinner } from "../ui";
 
 const APP_ID = (process.env.NEXT_PUBLIC_WORLD_APP_ID || "app_") as `app_${string}`;
-const short = (s: string) => (s.length > 18 ? `${s.slice(0, 10)}…${s.slice(-6)}` : s);
 
 export default function StepIdentity({ lang, session, patch, next, back, canBack }: StepProps) {
   const en = lang === "en";
@@ -26,7 +25,6 @@ export default function StepIdentity({ lang, session, patch, next, back, canBack
         why: "Pledging a caderneta predial requires an adult under PT jurisdiction. World answers “yes, 18+ and PRT”, never your name, birth date or document number.",
         start: "Verify with World ID", starting: "Preparing…", waiting: "Open World App to continue",
         okTitle: "Identity verified", age: "Age 18+ attested", jur: "🇵🇹 PT-issued document",
-        idNull: "Identity nullifier",
         cont: "Continue", back: "Back", retry: "Try again",
         sandbox: "SANDBOX — not a real proof",
         err: "Verification failed. Try again.",
@@ -37,7 +35,6 @@ export default function StepIdentity({ lang, session, patch, next, back, canBack
         why: "Dar uma caderneta predial como garantia exige um adulto sob jurisdição PT. A World responde “sim, 18+ e PRT”, nunca o seu nome, data de nascimento ou número do documento.",
         start: "Verificar com World ID", starting: "A preparar…", waiting: "Abra a World App para continuar",
         okTitle: "Identidade verificada", age: "Idade 18+ atestada", jur: "🇵🇹 Documento emitido em PT",
-        idNull: "Nullifier de identidade",
         cont: "Continuar", back: "Voltar", retry: "Tentar de novo",
         sandbox: "SANDBOX — não é uma prova real",
         err: "Falha na verificação. Tente novamente.",
@@ -108,7 +105,6 @@ export default function StepIdentity({ lang, session, patch, next, back, canBack
               <Badge tone="blue">{t.jur}</Badge>
               {identity.sandbox && <Badge tone="amber">⚠ {t.sandbox}</Badge>}
             </div>
-            <ProofRow label={t.idNull} value={short(identity.identityNullifier)} />
             <div className="flex items-center gap-3 pt-1">
               {canBack && <SecondaryButton onClick={back}>← {t.back}</SecondaryButton>}
               <PrimaryButton onClick={next}>{t.cont} →</PrimaryButton>

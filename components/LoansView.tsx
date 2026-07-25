@@ -22,10 +22,20 @@ type Loan = {
   disburseDigest: string;
   repayDigest?: string;
   status: "active" | "repaid";
-  live?: { drawnUsdc: number; locked: number; repaid: boolean; vpt: number } | null;
+  live?: {
+    drawnUsdc: number;
+    locked: number;
+    repaid: boolean;
+    vpt: number;
+    rateBps?: number;
+    drawnAtMs?: number;
+    interestUsdc?: number;
+    owedUsdc?: number;
+  } | null;
 };
 
 type Treasury = { address: string; suiBalance: number; eusdSupply: number };
+type Pool = { capacity: number; totalDrawn: number; utilizationBps: number; currentRateBps: number; totalInterest: number };
 
 const short = (a: string) => (a && a.length > 16 ? `${a.slice(0, 8)}…${a.slice(-6)}` : a || "—");
 
@@ -33,6 +43,7 @@ export default function LoansView({ lang }: { lang: Locale }) {
   const { accountId } = useWallet();
   const [loans, setLoans] = useState<Loan[]>([]);
   const [treasury, setTreasury] = useState<Treasury | null>(null);
+  const [pool, setPool] = useState<Pool | null>(null);
   const [loading, setLoading] = useState(true);
   const [repaying, setRepaying] = useState<string | null>(null);
   // Continuity re-auth: the vault awaiting a Selfie Check before we'll repay it.
@@ -42,12 +53,15 @@ export default function LoansView({ lang }: { lang: Locale }) {
   const [gateError, setGateError] = useState<{ vaultId: string; msg: string } | null>(null);
 
   const fmt = (n: number) => n.toLocaleString(lang === "en" ? "en-US" : "pt-PT");
+  const pct = (bps: number) => `${(bps / 100).toFixed(bps % 100 === 0 ? 0 : 2)}%`;
 
   const t = lang === "en"
     ? {
         title: "Loan management", sub: "Active bridge positions, live from Sui. Repay to settle the eUSD draw and release the collateral back to the owner.",
         empty: "No loans yet.", start: "Start the bridge",
         treasury: "Treasury", tSui: "SUI balance", tEusd: "eUSD minted", tAddr: "Address",
+        util: "Pool utilization", curRate: "borrow APR now", yieldEarned: "Yield earned",
+        rate: "Borrow APR", interest: "Interest accrued", owed: "Owed now", proj90: "≈ interest if held 90 days",
         property: "Property", drawn: "Drawn", collateral: "Collateral", vaultL: "Vault", coinL: "HOUSE coin", disburseL: "Disbursement", repayL: "Repayment",
         active: "Active", repaid: "Repaid", repay: "Repay & release", repayingT: "Repaying…",
         gate: "Confirming it's you…",
@@ -59,6 +73,8 @@ export default function LoansView({ lang }: { lang: Locale }) {
         title: "Gestão de empréstimos", sub: "Posições-ponte ativas, em tempo real na Sui. Reembolse para liquidar o levantamento em eUSD e libertar a garantia ao proprietário.",
         empty: "Ainda não há empréstimos.", start: "Iniciar a ponte",
         treasury: "Tesouraria", tSui: "Saldo SUI", tEusd: "eUSD emitido", tAddr: "Endereço",
+        util: "Utilização do pool", curRate: "TAN agora", yieldEarned: "Rendimento gerado",
+        rate: "TAN", interest: "Juros acumulados", owed: "Em dívida agora", proj90: "≈ juros se mantido 90 dias",
         property: "Imóvel", drawn: "Levantado", collateral: "Garantia", vaultL: "Vault", coinL: "Moeda HOUSE", disburseL: "Pagamento", repayL: "Reembolso",
         active: "Ativo", repaid: "Reembolsado", repay: "Reembolsar & libertar", repayingT: "A reembolsar…",
         gate: "A confirmar que é você…",
@@ -75,6 +91,7 @@ export default function LoansView({ lang }: { lang: Locale }) {
       const json = await res.json();
       setLoans(json.loans ?? []);
       setTreasury(json.treasury ?? null);
+      setPool(json.pool ?? null);
     } catch {
       /* ignore */
     } finally {
@@ -157,6 +174,28 @@ export default function LoansView({ lang }: { lang: Locale }) {
         </div>
       )}
 
+      {/* Money-market: utilization drives the borrow rate; interest is protocol yield. */}
+      {pool && (
+        <div className="mt-4 grid gap-4 sm:grid-cols-3">
+          <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200/70 dark:bg-[var(--color-card)] dark:ring-slate-700">
+            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t.util}</p>
+            <p className="mt-1 text-2xl font-bold text-slate-800 dark:text-slate-100">{pct(pool.utilizationBps)}</p>
+            <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-700">
+              <div className="h-full rounded-full bg-[var(--color-primary)]" style={{ width: `${Math.min(100, pool.utilizationBps / 100)}%` }} />
+            </div>
+            <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">${fmt(pool.totalDrawn)} / ${fmt(pool.capacity)}</p>
+          </div>
+          <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200/70 dark:bg-[var(--color-card)] dark:ring-slate-700">
+            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t.curRate}</p>
+            <p className="mt-1 text-2xl font-bold text-[var(--color-primary)]">{pct(pool.currentRateBps)}</p>
+          </div>
+          <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200/70 dark:bg-[var(--color-card)] dark:ring-slate-700">
+            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t.yieldEarned}</p>
+            <p className="mt-1 text-2xl font-bold text-emerald-600 dark:text-emerald-400">${fmt(Number(pool.totalInterest.toFixed(2)))}</p>
+          </div>
+        </div>
+      )}
+
       {/* Loans */}
       <div className="mt-8 space-y-4">
         {loading ? (
@@ -172,6 +211,11 @@ export default function LoansView({ lang }: { lang: Locale }) {
           loans.map((l) => {
             const drawn = l.live?.drawnUsdc ?? l.drawnUsdc;
             const isRepaid = l.status === "repaid" || l.live?.repaid;
+            const rateBps = l.live?.rateBps ?? 0;
+            const interest = l.live?.interestUsdc ?? 0;
+            const owedNow = l.live?.owedUsdc ?? drawn;
+            // Tangible figure for a demo where live elapsed time is only seconds.
+            const proj90 = (drawn * rateBps * 90) / (10000 * 365);
             return (
               <div key={l.vaultId} className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200/70 dark:bg-[var(--color-card)] dark:ring-slate-700 sm:p-7">
                 <div className="flex flex-wrap items-start justify-between gap-4">
@@ -191,6 +235,25 @@ export default function LoansView({ lang }: { lang: Locale }) {
                     <p className="text-2xl font-bold text-[var(--color-primary)]">${fmt(drawn)}</p>
                   </div>
                 </div>
+
+                {/* Money-market position: rate priced at draw, interest accruing by time held. */}
+                {!isRepaid && rateBps > 0 && (
+                  <div className="mt-4 grid grid-cols-2 gap-3 rounded-2xl bg-slate-50 p-4 dark:bg-slate-800/40 sm:grid-cols-3">
+                    <div>
+                      <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t.rate}</p>
+                      <p className="mt-0.5 text-lg font-bold text-slate-800 dark:text-slate-100">{pct(rateBps)}</p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t.interest}</p>
+                      <p className="mt-0.5 text-lg font-bold text-emerald-600 dark:text-emerald-400">${interest.toFixed(2)}</p>
+                      <p className="text-[11px] text-slate-400">{t.proj90}: ${fmt(Math.round(proj90))}</p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t.owed}</p>
+                      <p className="mt-0.5 text-lg font-bold text-slate-800 dark:text-slate-100">${fmt(Number(owedNow.toFixed(2)))}</p>
+                    </div>
+                  </div>
+                )}
 
                 <div className="mt-4 flex flex-wrap gap-x-5 gap-y-1 text-xs">
                   <a href={onChain(l.vaultId) ? suiscanObject(l.vaultId) : undefined} target="_blank" rel="noreferrer" className="text-[var(--color-primary)] hover:underline">{t.vaultL} ↗</a>

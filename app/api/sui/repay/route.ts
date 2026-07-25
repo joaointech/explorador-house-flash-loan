@@ -25,10 +25,22 @@ export async function POST(req: NextRequest) {
     const live = await getVault(vaultId);
     const drawUsdc = live?.drawnUsdc ?? loan.drawnUsdc ?? 0;
 
-    const res = await repayLoan({ vaultId, drawUsdc });
+    const res = await repayLoan({
+      vaultId,
+      drawUsdc,
+      drawnAtMs: live?.drawnAtMs,
+      rateBps: live?.rateBps,
+    });
     await markRepaid(vaultId, res.digest);
 
-    return NextResponse.json({ digest: res.digest, repaidUsdc: drawUsdc, demo: res.demo });
+    return NextResponse.json({
+      digest: res.digest,
+      repaidUsdc: res.owedUsdc,
+      principalUsdc: res.principalUsdc,
+      interestUsdc: res.interestUsdc,
+      rateBps: live?.rateBps ?? 0,
+      demo: res.demo,
+    });
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : "repay_failed";
     return NextResponse.json({ error: msg }, { status: 500 });

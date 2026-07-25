@@ -15,8 +15,8 @@ stablecoin liquidity in minutes — 100% on Sui, auditable end to end:
 3. **World ID eligibility** — **Identity Check** attests `18+` and a `PRT`-issued document (predicates only — the app never receives a name, birth date or document number), and **Selfie Check** proves the document holder is live and hasn't already borrowed against another property. See [WORLDID_TESTING.md](./WORLDID_TESTING.md).
 4. **Encrypt & anchor** — documents are encrypted (Seal / AES) and stored on **Walrus**; the document hash is anchored on **Sui** (a `DocumentAnchored` event).
 5. **Tokenize** — the house is minted as **HOUSE equity coins** by a published **Move package**, supply pegged 1:1 to VPT (€), held in a shared `CollateralVault` object.
-6. **Collateralize & draw** — lock a fraction of the equity; an **AI treasury agent** underwrites the collateral, the World ID attestations and the sybil check, then in **one Sui transaction** records the draw on the vault (`lock_and_draw`) and transfers **USDC**.
-7. **Withdraw** the liquidity for the new CPCV. Repaid when the old house sells — and repaying or re-drawing needs a **fresh Selfie Check matching the nullifier bound at origination**, so only the human who pledged the house can settle it.
+6. **Collateralize & draw** — lock a fraction of the equity; an **AI treasury agent** underwrites the collateral, the World ID attestations and the sybil check, then in **one Sui transaction** prices the draw against a shared lending **`Pool`** (a **utilization-based borrow rate**, à la Aave/Suilend) and disburses **eUSD**.
+7. **Withdraw** the liquidity for the new CPCV. Repaid when the old house sells — interest accrues by the **time held** (Sui `Clock`) at the rate locked in at draw, so you only pay for the days you use it (no bank, no paperwork, no origination fee). That interest is booked as protocol yield. Repaying or re-drawing needs a **fresh Selfie Check matching the nullifier bound at origination**, so only the human who pledged the house can settle it.
 
 ---
 
@@ -24,16 +24,18 @@ stablecoin liquidity in minutes — 100% on Sui, auditable end to end:
 
 | Sui primitive | Where it lives |
 |---|---|
-| **Move package** (published to testnet) | `sui/sources/bridge.move` — `HOUSE` coin, `CollateralVault`, `tokenize` / `anchor` / `lock_and_draw` / **`repay`** (settle eUSD + release collateral), events; `sui/sources/eusd.move` — **eUSD** mintable USD stablecoin |
-| **Programmable transaction blocks** | `lib/sui.ts` — mint+vault, anchor event, `lock_and_draw`+coin transfer in one PTB |
+| **Move package** (published to testnet) | `sui/sources/bridge.move` — `HOUSE` coin, `CollateralVault`, shared lending **`Pool`** (utilization → borrow APR), `tokenize` / `anchor` / `lock_and_draw` (prices the draw) / **`repay`** (principal + `Clock`-accrued interest, release collateral, book yield), events; `sui/sources/eusd.move` — **eUSD** mintable USD stablecoin |
+| **Programmable transaction blocks** | `lib/sui.ts` — mint+vault, anchor event, `lock_and_draw`+coin transfer in one PTB; `repay` mints principal+interest and releases collateral in one PTB |
+| **Shared-object money market** | `Pool` tracks `total_drawn / capacity`; a kinked rate curve (`rate_from_util`) sets the APR every draw reads — our own on-chain lending |
 | **Walrus** decentralized storage | `lib/walrus.ts` — encrypted caderneta/KYC blobs |
 | **Seal** access-controlled encryption | `lib/walrus.ts` — threshold encrypt before upload (AES-GCM fallback) |
 | **Privy** embedded Sui wallet (zkLogin-style abstraction) | `components/WalletProvider.tsx` — `createWallet({ chainType: 'sui' })` |
 
 **Published on Sui testnet:**
-- Package: `0xef6afd31cf94cf0850a85dbc23fd3678b243468c928ca6c149f186a1bb6b9b13`
+- Package: `0xcc680372aec8ef98bd4f1c6dfcc0baf6dbec432f616c917472b76169f94124a3`
+- Lending **Pool** (shared): `0x74a9a501955db2a4ebcc00c2e6df34209df7d8bca9b99d4bc2eb0d799912d3cc`
 - HOUSE equity coin: `…::house::HOUSE` · **eUSD stablecoin**: `…::eusd::EUSD`
-- Verified live txs (Suiscan testnet): tokenize, `anchor`, and the agent's disbursement (which **mints 37,500 eUSD** — a real full-value stablecoin transfer) all execute on-chain.
+- Verified live txs (Suiscan testnet): tokenize, `anchor`, the agent's disbursement (a real full-value eUSD transfer), and a full `lock_and_draw` → `repay` cycle that **prices the draw at the pool's utilization rate and settles principal + time-accrued interest** all execute on-chain.
 
 Plus chain-agnostic **World ID** (Identity Check eligibility + Selfie Check liveness/sybil resistance) and **Claude** (document parsing + the treasury agent's reasoning).
 
@@ -63,7 +65,7 @@ the full flow without any keys. Each real testnet id links to **Suiscan**.
 ```bash
 cd sui && sui client publish --gas-budget 200000000   # or: npm run sui:publish
 ```
-Copy the printed package id + TreasuryCap into `.env.local` (`BRIDGE_PACKAGE_ID`, `BRIDGE_TREASURY_CAP`, `HOUSE_COIN_TYPE`).
+Copy the printed package id + TreasuryCap into `.env.local` (`BRIDGE_PACKAGE_ID`, `BRIDGE_TREASURY_CAP`, `HOUSE_COIN_TYPE`). Publishing also **shares a `Pool` object** — copy its object id into `BRIDGE_POOL_ID` (it's the created shared object of type `…::house::Pool`; the rate/interest features need it).
 
 ### Enabling each integration (all independent)
 

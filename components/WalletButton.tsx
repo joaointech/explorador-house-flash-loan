@@ -11,7 +11,7 @@ const short = (a: string) => (a.length > 14 ? `${a.slice(0, 6)}…${a.slice(-4)}
  * Signed in, it shows your email; click it for a popover with the full Sui
  * address (copyable), a Suiscan link, your account page, and sign out. */
 export default function WalletButton({ lang = "pt" }: { lang?: "pt" | "en" }) {
-  const { accountId, email, mode, connecting, connectPrivy, disconnect } = useWallet();
+  const { accountId, email, name, mode, connecting, connectPrivy, disconnect } = useWallet();
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -57,13 +57,13 @@ export default function WalletButton({ lang = "pt" }: { lang?: "pt" | "en" }) {
           className="inline-flex items-center gap-2 rounded-lg bg-white/15 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-white/25"
         >
           <span className="h-2 w-2 rounded-full bg-emerald-400" />
-          <span className="max-w-[10rem] truncate">{email ?? <span className="font-mono">{short(accountId)}</span>}</span>
+          <span className="max-w-[10rem] truncate">{name ?? email ?? <span className="font-mono">{short(accountId)}</span>}</span>
           {mode === "demo" && <span className="rounded bg-white/20 px-1.5 py-0.5 text-[10px] uppercase tracking-wide">demo</span>}
         </button>
 
         {open && (
           <div className="absolute right-0 top-full z-40 mt-2 w-72 rounded-2xl bg-white p-4 text-left shadow-lg ring-1 ring-slate-200/70 dark:bg-[var(--color-card)] dark:ring-slate-700">
-            {email && <p className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">{email}</p>}
+            {(name ?? email) && <p className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">{name ?? email}</p>}
             <p className="mt-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t.address}</p>
             <p className="mt-1 break-all font-mono text-xs text-slate-700 dark:text-slate-300">{accountId}</p>
             <div className="mt-3 flex items-center gap-3 text-xs">

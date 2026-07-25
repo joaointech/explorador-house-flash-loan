@@ -35,6 +35,7 @@ export default function YieldLab({ lang }: { lang: Locale }) {
   // Poll the real pool state.
   useEffect(() => {
     let alive = true;
+    let first = true;
     const poll = async () => {
       try {
         const r = await fetch("/api/sui/pool", { cache: "no-store" });
@@ -42,12 +43,27 @@ export default function YieldLab({ lang }: { lang: Locale }) {
         if (alive && j.pool) {
           setPool(j.pool);
           targetRate.current = j.pool.currentRateBps;
+          // Snap the pre-filled line to the real rate as soon as we know it,
+          // instead of showing the 200bps placeholder briefly.
+          if (first) {
+            displayRate.current = j.pool.currentRateBps;
+            setPts((prev) => prev.map((p) => ({ ...p, rate: j.pool.currentRateBps })));
+            first = false;
+          }
         }
       } catch { /* ignore */ }
     };
     poll();
     const id = setInterval(poll, POLL_MS);
     return () => { alive = false; clearInterval(id); };
+  }, []);
+
+  // Pre-fill the window on mount (client-only, after hydration) so the chart
+  // shows a full line immediately instead of growing from a single point.
+  useEffect(() => {
+    const now = Date.now();
+    const n = Math.ceil(WINDOW_MS / SAMPLE_MS);
+    setPts(Array.from({ length: n }, (_, i) => ({ t: now - (n - i) * SAMPLE_MS, rate: displayRate.current })));
   }, []);
 
   // Sample an interpolated point on a fixed cadence → smooth scrolling line.

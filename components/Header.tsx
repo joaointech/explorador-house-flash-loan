@@ -22,7 +22,7 @@ export default function Header({ lang, dict }: { lang: Locale; dict: Dictionary 
           <Logo type="icon" variant="white" size={30} />
           <span className="text-xl font-bold lowercase tracking-tight text-white">explorador</span>
           <span className="hidden rounded bg-white/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white/90 sm:inline">
-            bridge
+            loans
           </span>
         </Link>
 

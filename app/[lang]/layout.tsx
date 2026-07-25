@@ -21,7 +21,7 @@ export default async function LocaleLayout({
 
   return (
     <WalletProvider>
-      <div className="flex min-h-full flex-col bg-[var(--color-bg)]">
+      <div className="flex min-h-screen flex-col bg-[var(--color-bg)]">
         <Header lang={lang} dict={dict} />
         <main className="flex-1">{children}</main>
         <Footer lang={lang} dict={dict} />

@@ -340,6 +340,23 @@ export async function getPool(): Promise<PoolState | null> {
   }
 }
 
+// ── Market maker: set a vault's outstanding draw on-chain (moves utilization) ──
+export async function mmSetDraw(params: { vaultId: string; newDraw: number }): Promise<{ digest: string; demo: boolean }> {
+  if (!suiConfigured() || !POOL || !params.vaultId?.startsWith("0x")) {
+    return { digest: rndDigest(), demo: true };
+  }
+  const { Transaction } = await import("@mysten/sui/transactions");
+  const { client, keypair } = await ctx();
+  const tx = new Transaction();
+  tx.moveCall({
+    target: `${PKG}::house::mm_set_draw`,
+    arguments: [tx.object(params.vaultId), tx.object(POOL), tx.object(CLOCK), tx.pure.u64(Math.max(0, Math.round(params.newDraw)))],
+  });
+  const res = await client.signAndExecuteTransaction({ signer: keypair, transaction: tx });
+  await client.waitForTransaction({ digest: res.digest });
+  return { digest: res.digest, demo: false };
+}
+
 // ── Treasury summary (SUI balance + total eUSD in circulation) ───────
 export async function treasurySummary(): Promise<{ address: string; suiBalance: number; eusdSupply: number; demo: boolean }> {
   const EUSD = process.env.EUSD_COIN_TYPE;

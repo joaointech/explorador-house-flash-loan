@@ -35,3 +35,4 @@ sui/build/
 .loans.json
 .kyc.json
 .agreements.json
+.mm.json

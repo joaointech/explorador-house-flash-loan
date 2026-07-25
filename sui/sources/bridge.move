@@ -145,6 +145,43 @@ module bridge::house {
         pool.capacity = capacity;
     }
 
+    /// Treasury/market-maker only: set a vault's outstanding draw to `new_draw`
+    /// in one transaction (raising it = borrow more, lowering = repay part),
+    /// re-pricing the borrow rate from the resulting pool utilization. Used by
+    /// the market maker to vary utilization (and thus the yield) on-chain.
+    public entry fun mm_set_draw(
+        vault: &mut CollateralVault,
+        pool: &mut Pool,
+        clock: &Clock,
+        new_draw: u64,
+        ctx: &mut TxContext,
+    ) {
+        assert!(ctx.sender() == pool.admin, EUnauthorized);
+        // Move the pool's outstanding by the delta (guard the subtraction).
+        if (pool.total_drawn >= vault.drawn_usdc) {
+            pool.total_drawn = pool.total_drawn - vault.drawn_usdc + new_draw;
+        } else {
+            pool.total_drawn = new_draw;
+        };
+        vault.drawn_usdc = new_draw;
+        vault.drawn_at_ms = clock::timestamp_ms(clock);
+        let util = utilization_bps(pool);
+        vault.rate_bps = rate_from_util(util);
+        event::emit(CollateralLocked {
+            vault: vault.id.to_address(),
+            locked: vault.locked,
+            drawn_usdc: new_draw,
+            rate_bps: vault.rate_bps,
+            utilization_bps: util,
+        });
+    }
+
+    /// Seal access policy. Key servers dry-run this to authorize decryption of a
+    /// blob whose identity is namespaced to this package. Demo policy: the blob is
+    /// Seal-encrypted (never plaintext off-chain) and decryptable within the app;
+    /// tighten `id` gating here to bind blobs to a specific owner/vault.
+    entry fun seal_approve(_id: vector<u8>) {}
+
     /// Lock a fraction (basis points) of the vault's equity, record the draw, and
     /// price it: the borrow rate is read from current pool utilization and the
     /// clock starts on the interest meter.

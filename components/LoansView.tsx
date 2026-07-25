@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import YieldLab from "@/components/YieldLab";
 import { useWallet } from "@/components/WalletProvider";
 import type { Locale } from "@/lib/i18n";
 import { suiscanTx, suiscanObject, suiscanCoin, onChain } from "@/lib/types";
@@ -88,6 +89,11 @@ export default function LoansView({ lang }: { lang: Locale }) {
     <div className="mx-auto max-w-5xl px-4 py-12">
       <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100 sm:text-3xl">{t.title}</h1>
       <p className="mt-1 max-w-2xl text-slate-600 dark:text-slate-400">{t.sub}</p>
+
+      {/* Live yield + market maker */}
+      <div className="mt-6">
+        <YieldLab lang={lang} />
+      </div>
 
       {/* Treasury summary */}
       {treasury && (

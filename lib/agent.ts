@@ -1,6 +1,7 @@
 import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
 import { disburse } from "./sui";
+import { aiProvider, openaiClient, OPENAI_MODEL } from "./ai";
 import type { Disbursement } from "./types";
 import type { KycSession } from "./kyc-store";
 
@@ -17,8 +18,9 @@ import type { KycSession } from "./kyc-store";
  * ELIGIBILITY (18+, PT-issued document) and Selfie Check establishes PRESENCE and
  * sybil-resistance (this human has no other active loan — checked before we get here).
  *
- * Reasoning runs on Claude (structured output). Without a key it falls back to
- * a deterministic policy so the demo still executes end-to-end.
+ * Reasoning runs on the configured AI provider (OpenAI or Anthropic) with
+ * structured output. Without a key it falls back to a deterministic policy so
+ * the demo still executes end-to-end.
  */
 
 type AgentInput = {
@@ -49,8 +51,9 @@ async function decide(input: AgentInput): Promise<Decision> {
   const maxDraw = Math.floor(lockedEquity * 0.7);
 
   const eligible = input.kyc.identityAttested && Boolean(input.kyc.selfieNullifier);
+  const provider = aiProvider();
 
-  if (!process.env.ANTHROPIC_API_KEY) {
+  if (!provider) {
     const approve = eligible && input.drawAmount <= maxDraw && input.drawAmount > 0;
     return {
       approve,
@@ -61,33 +64,51 @@ async function decide(input: AgentInput): Promise<Decision> {
     };
   }
 
+  const system =
+    "You are the treasury risk agent for a real-estate bridge-liquidity protocol on Sui. " +
+    "You release stablecoin liquidity against tokenized home equity. Only approve when World ID establishes eligibility (document-backed 18+ and a Portugal-issued document) AND liveness (a selfie proving the borrower was present at signing) AND the borrower has signed a Termo de Reconhecimento e Confissão de Dívida via Chave Móvel Digital (checked before you run — its hash is already anchored on Sui), and the requested draw stays within 70% loan-to-value of the locked equity. " +
+    "You receive attestations, not personal data — you never see a name, birth date or document number, and you must not ask for them. Be concise.";
+
+  const payload = JSON.stringify({
+    // Predicates only — this is the entire identity surface the agent ever sees.
+    identityAttested18PlusPrt: input.kyc.identityAttested,
+    livePresenceAttested: Boolean(input.kyc.selfieNullifier),
+    noOtherActiveLoanForThisHuman: true, // enforced before the agent runs
+    sandbox: input.kyc.sandbox ?? false,
+    vptEur: input.vpt,
+    collateralPct: input.collateralPct,
+    lockedEquityEur: lockedEquity,
+    requestedDrawUsdc: input.drawAmount,
+    impliedLtv: ltv,
+    vaultId: input.vaultId,
+  });
+
+  return provider === "openai"
+    ? decideWithOpenAI(system, payload, maxDraw)
+    : decideWithAnthropic(system, payload, maxDraw);
+}
+
+async function decideWithOpenAI(system: string, payload: string, maxDraw: number): Promise<Decision> {
+  const client = await openaiClient();
+  const res = await client.responses.create({
+    model: OPENAI_MODEL,
+    instructions: system,
+    input: payload,
+    text: { format: { type: "json_schema", name: "decision", schema: DECISION_SCHEMA, strict: true } },
+  });
+  const text = res.output_text;
+  if (!text) return { approve: false, rationale: "no_decision", maxDraw };
+  return JSON.parse(text) as Decision;
+}
+
+async function decideWithAnthropic(system: string, payload: string, maxDraw: number): Promise<Decision> {
   const client = new Anthropic();
   const res = await client.messages.create({
     model: "claude-opus-4-8",
     max_tokens: 800,
     output_config: { format: { type: "json_schema", schema: DECISION_SCHEMA } },
-    system:
-      "You are the treasury risk agent for a real-estate bridge-liquidity protocol on Sui. " +
-      "You release stablecoin liquidity against tokenized home equity. Only approve when World ID establishes eligibility (document-backed 18+ and a Portugal-issued document) AND liveness (a selfie proving the borrower was present at signing) AND the borrower has signed a Termo de Reconhecimento e Confissão de Dívida via Chave Móvel Digital (checked before you run — its hash is already anchored on Sui), and the requested draw stays within 70% loan-to-value of the locked equity. " +
-      "You receive attestations, not personal data — you never see a name, birth date or document number, and you must not ask for them. Be concise.",
-    messages: [
-      {
-        role: "user",
-        content: JSON.stringify({
-          // Predicates only — this is the entire identity surface the agent ever sees.
-          identityAttested18PlusPrt: input.kyc.identityAttested,
-          livePresenceAttested: Boolean(input.kyc.selfieNullifier),
-          noOtherActiveLoanForThisHuman: true, // enforced before the agent runs
-          sandbox: input.kyc.sandbox ?? false,
-          vptEur: input.vpt,
-          collateralPct: input.collateralPct,
-          lockedEquityEur: lockedEquity,
-          requestedDrawUsdc: input.drawAmount,
-          impliedLtv: ltv,
-          vaultId: input.vaultId,
-        }),
-      },
-    ],
+    system,
+    messages: [{ role: "user", content: payload }],
   });
   const block = res.content.find((b) => b.type === "text");
   if (!block || block.type !== "text") return { approve: false, rationale: "no_decision", maxDraw };

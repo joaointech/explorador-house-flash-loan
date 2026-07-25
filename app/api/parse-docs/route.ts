@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { parsePropertyDocuments } from "@/lib/ai-parse";
+import { aiConfigured } from "@/lib/ai";
 import type { PropertyData } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-// Demo fallback so the wizard flows end-to-end even without an Anthropic key.
+// Demo fallback so the wizard flows end-to-end even without an AI key.
 const DEMO: PropertyData = {
   artigoMatricial: "1234",
   vpt: 250000,
@@ -27,8 +28,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "no_files" }, { status: 400 });
     }
 
-    // No key configured → return the demo extraction (flagged) so the demo works.
-    if (!process.env.ANTHROPIC_API_KEY) {
+    // No AI key configured → return the demo extraction (flagged) so the demo works.
+    if (!aiConfigured()) {
       return NextResponse.json({ property: DEMO, demo: true });
     }
 

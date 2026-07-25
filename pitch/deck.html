@@ -93,6 +93,11 @@
   .logochip{display:inline-flex; align-items:center; justify-content:center; background:#fff; border-radius:12px; padding:12px 18px; height:56px; box-shadow:0 8px 22px rgba(0,0,0,.25)}
   .logochip img{height:26px; width:auto; display:block}
 
+  .clabel{font-size:.72rem; font-weight:700; text-transform:uppercase; letter-spacing:.12em; color:var(--muted); display:block; margin-bottom:.6em}
+  .channels{display:flex; gap:10px; flex-wrap:wrap}
+  .chan{display:inline-flex; align-items:center; gap:9px; padding:9px 15px; border-radius:999px; background:#fff; border:1px solid var(--line); font-size:.92rem; font-weight:600; color:var(--ink)}
+  .chan svg{width:20px; height:20px}
+
   .logo{width:20px; height:20px; display:inline-block; vertical-align:middle}
   .plogos{display:flex; gap:7px; align-items:center; margin-bottom:.5em; color:var(--sky)}
   .plogos.ink{color:var(--muted)}
@@ -184,19 +189,19 @@
     <symbol id="ic-instagram" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="5.2"/><circle cx="12" cy="12" r="4"/></g><circle cx="17.4" cy="6.6" r="1.3" fill="currentColor"/></symbol>
     <symbol id="ic-x" viewBox="0 0 24 24"><path fill="currentColor" d="M18.9 2H22l-7.4 8.4L23.2 22h-6.8l-5-6.6L5.7 22H2.5l7.9-9L1.3 2h7l4.5 6zM17.7 20.1h1.7L7.3 3.8H5.5z"/></symbol>
     <symbol id="ic-reddit" viewBox="0 0 24 24"><path fill="currentColor" d="M22 11.8a2.1 2.1 0 0 0-3.6-1.5 10.3 10.3 0 0 0-5.2-1.6l.9-4.2 2.9.6a1.5 1.5 0 1 0 .2-1l-3.5-.7a.5.5 0 0 0-.6.4l-1 4.9a10.4 10.4 0 0 0-5.4 1.6A2.1 2.1 0 1 0 3 15.2a4 4 0 0 0 0 .5c0 3 3.9 5.4 8.7 5.4s8.7-2.4 8.7-5.4a4 4 0 0 0 0-.5A2.1 2.1 0 0 0 22 11.8zM7 13.6a1.5 1.5 0 1 1 3 0 1.5 1.5 0 0 1-3 0zm8.3 4.2a5.9 5.9 0 0 1-3.4.9 5.9 5.9 0 0 1-3.4-.9.5.5 0 0 1 .6-.8 5 5 0 0 0 2.8.7 5 5 0 0 0 2.8-.7.5.5 0 1 1 .6.8zm-.5-2.7a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z"/></symbol>
+    <symbol id="ic-whatsapp" viewBox="0 0 24 24"><path fill="currentColor" d="M12 2a10 10 0 0 0-8.5 15.2L2 22l4.9-1.3A10 10 0 1 0 12 2zm0 18a8 8 0 0 1-4.1-1.1l-.3-.2-2.9.8.8-2.8-.2-.3A8 8 0 1 1 12 20zm4.4-6c-.2-.1-1.4-.7-1.6-.8s-.4-.1-.5.1-.6.8-.7.9-.3.2-.5.1a6.5 6.5 0 0 1-1.9-1.2 7.3 7.3 0 0 1-1.3-1.7c-.1-.2 0-.4.1-.5l.4-.4.2-.4a.5.5 0 0 0 0-.5c0-.1-.5-1.3-.7-1.8s-.4-.4-.5-.4h-.5a.9.9 0 0 0-.7.3A2.8 2.8 0 0 0 6 9.3a4.9 4.9 0 0 0 1 2.6 11.2 11.2 0 0 0 4.3 3.8c.6.3 1.1.4 1.5.5a3.6 3.6 0 0 0 1.6.1c.5-.1 1.4-.6 1.6-1.1s.2-1 .1-1.1-.2-.1-.4-.2z"/></symbol>
+    <symbol id="ic-phone" viewBox="0 0 24 24"><path fill="currentColor" d="M6.6 10.8a15.5 15.5 0 0 0 6.6 6.6l2.2-2.2a1 1 0 0 1 1-.25 11.4 11.4 0 0 0 3.6.6 1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1 11.4 11.4 0 0 0 .6 3.6 1 1 0 0 1-.25 1z"/></symbol>
+    <symbol id="ic-sms" viewBox="0 0 24 24"><path fill="currentColor" d="M4 4h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H8l-4 4V6a2 2 0 0 1 2-2z"/><g fill="#fff"><circle cx="8.5" cy="10.5" r="1.1"/><circle cx="12" cy="10.5" r="1.1"/><circle cx="15.5" cy="10.5" r="1.1"/></g></symbol>
   </svg>
 
   <!-- 0 COVER -->
-  <section class="slide dark active">
-    <div class="brand reveal"><img src="assets/explorador-mark.png" alt="explorador"><div class="wm">explorador<small>AI real estate · Portugal</small></div></div>
-    <h1 class="reveal">The house you're selling<br>can pay for the one <span class="glow">you're buying.</span></h1>
-    <p class="reveal" style="margin-top:1.3rem; max-width:50ch; font-size:1.15rem; color:rgba(255,255,255,.72)">
-      Draw stablecoin liquidity against your home, so you can sign for the next one before this one sells.
-    </p>
-    <div class="reveal" style="margin-top:2.2rem; display:flex; gap:12px; flex-wrap:wrap">
-      <span class="pill"><span class="dot"></span> ETHGlobal Lisbon 2026</span>
-      <span class="pill">Built on Sui</span>
+  <section class="slide dark active" style="align-items:center; justify-content:center; text-align:center">
+    <div class="reveal" style="display:flex; flex-direction:column; align-items:center; gap:22px">
+      <img src="assets/explorador-mark.png" alt="explorador" style="width:118px; height:auto; filter:drop-shadow(0 12px 34px rgba(15,23,42,.55))">
+      <div style="font-weight:800; font-size:clamp(2.8rem,7.5vw,4.8rem); letter-spacing:-.03em; color:#fff; line-height:1">explorador</div>
+      <div style="font-size:.82rem; font-weight:600; letter-spacing:.3em; text-transform:uppercase; color:var(--sky)">AI real estate · Portugal</div>
     </div>
+    <span class="pill reveal" style="margin-top:40px"><span class="dot"></span> ETHGlobal Lisbon 2026</span>
   </section>
 
   <!-- 1 CRISIS -->
@@ -232,15 +237,53 @@
     <p class="src reveal">Sources: Eurostat (Q4 2025), INE, idealista. Prices rose about 4x faster than incomes.</p>
   </section>
 
-  <!-- 2 SOCIAL -->
+  <!-- 2 REASONS -->
+  <section class="slide dark">
+    <p class="kicker reveal">Why it happens</p>
+    <h2 class="reveal">Three things keep the market <span class="accent">frozen.</span></h2>
+    <div class="grid g3" style="margin-top:.5em">
+      <div class="card reveal"><h3>🏗️ Too few homes</h3><p>Construction hasn't kept pace with demand for years. Supply is scarce, so every listing gets bid up.</p></div>
+      <div class="card reveal"><h3>🏢 Agencies take 5%, and lock the market</h3><p>A 5% commission (that's <strong>€17,500</strong> on a €350k home) is baked into every price, and exclusivity contracts pull homes off the open market and inflate asking prices.</p></div>
+      <div class="card reveal"><h3>📑 Endless bureaucracy</h3><p>CPCV, notary, financing: a slow, paperwork-heavy process that stalls every deal and scares buyers off.</p></div>
+    </div>
+    <p class="reveal" style="margin-top:1.5em; font-size:1.15rem; color:#fff; font-weight:600">Less supply, higher fees, more friction. <span class="accent">Nothing moves.</span></p>
+  </section>
+
+  <!-- 3 EXPLORADOR.PT (TINDER) -->
+  <section class="slide">
+    <p class="kicker reveal">Our answer, explorador.pt</p>
+    <div class="row" style="gap:40px; align-items:stretch">
+      <div class="grow col reveal" style="justify-content:center">
+        <h2>Tinder for your next home,<br>the first <span class="accent">AI-native agency.</span></h2>
+        <p style="max-width:54ch; margin:.2em 0 1.1em">Swipe homes across Portugal, then let the AI take over. On a match, the agent reaches <strong>both the buyer and the seller</strong>, qualifies them, answers questions, books the visit and drives the whole sale to close, automatically. <strong>0% commission.</strong></p>
+        <div class="reveal">
+          <span class="clabel">Your AI agent works every channel</span>
+          <div class="channels">
+            <span class="chan"><svg style="color:#25D366"><use href="#ic-whatsapp"/></svg> WhatsApp</span>
+            <span class="chan"><svg style="color:#2563eb"><use href="#ic-phone"/></svg> Phone call</span>
+            <span class="chan"><svg style="color:#2563eb"><use href="#ic-sms"/></svg> SMS</span>
+          </div>
+        </div>
+        <div class="reveal" style="display:flex; gap:30px; margin-top:1.3em">
+          <div><div class="stat num" data-count="5000" data-comma="1" style="font-size:2.1rem">0</div><div class="stat-label">buyers in 2 months</div></div>
+          <div><div class="stat ink" style="font-size:2.1rem">€0</div><div class="stat-label">on marketing</div></div>
+        </div>
+      </div>
+      <div class="phones reveal" style="flex-direction:column; align-items:center; justify-content:center">
+        <div class="phone" style="width:214px; aspect-ratio:676/1482"><video src="assets/demo-tinder.mp4" poster="assets/demo-tinder.jpg" autoplay muted loop playsinline></video><span class="tag">Live app</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4 SOCIAL (ANALYTICS) -->
   <section class="slide dark">
     <p class="kicker reveal">So we picked up a camera</p>
-    <h2 class="reveal" style="max-width:22ch">We filmed bold lowball offers to homeowners. <span class="accent">People couldn't stop watching.</span></h2>
+    <h2 class="reveal" style="max-width:30ch; font-size:clamp(1.4rem,3.1vw,2.2rem)">We filmed bold lowball offers to homeowners. <span class="accent">People couldn't stop watching.</span></h2>
     <div class="row" style="gap:44px; align-items:flex-end">
       <div class="grow reveal">
         <div class="chart-wrap">
           <div class="chart-title" style="color:rgba(255,255,255,.85)">Growth across platforms, last 90 days</div>
-          <svg viewBox="0 0 520 175" width="100%" height="168" aria-label="growth across platforms">
+          <svg viewBox="0 0 520 175" width="100%" height="146" aria-label="growth across platforms">
             <g stroke="rgba(255,255,255,.08)" stroke-width="1"><line x1="30" y1="25" x2="512" y2="25"/><line x1="30" y1="90" x2="512" y2="90"/><line x1="30" y1="155" x2="512" y2="155"/></g>
             <polyline class="draw" fill="none" stroke="#a78bfa" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" points="30,158 130,153 220,144 310,128 400,108 512,86"/>
             <polyline class="draw" fill="none" stroke="#34d399" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" points="30,155 130,148 220,136 310,116 400,88 512,54"/>
@@ -254,50 +297,20 @@
         </div>
       </div>
       <div class="phones reveal">
-        <div class="phone"><video src="assets/reels/reel2.mp4" poster="assets/reels/reel2.jpg" autoplay muted loop playsinline></video><span class="tag">TikTok</span></div>
-        <div class="phone" style="margin-bottom:22px"><video src="assets/reels/reel4.mp4" poster="assets/reels/reel4.jpg" autoplay muted loop playsinline></video><span class="tag">Reels</span></div>
+        <div class="phone" style="width:128px"><video src="assets/reels/reel2.mp4" poster="assets/reels/reel2.jpg" autoplay muted loop playsinline></video><span class="tag">TikTok</span></div>
+        <div class="phone" style="width:128px; margin-bottom:20px"><video src="assets/reels/reel4.mp4" poster="assets/reels/reel4.jpg" autoplay muted loop playsinline></video><span class="tag">Reels</span></div>
       </div>
     </div>
-    <div class="grid reveal" style="grid-template-columns:repeat(5,1fr); margin-top:1.4em; gap:18px">
+    <div class="grid reveal" style="grid-template-columns:repeat(5,1fr); margin-top:.9em; gap:16px">
       <div><div class="plogos"><svg class="logo"><use href="#ic-tiktok"/></svg><svg class="logo"><use href="#ic-instagram"/></svg></div><div class="stat num" data-count="10" data-suffix="M+">0</div><div class="stat-label">organic views</div></div>
       <div><div class="plogos"><svg class="logo"><use href="#ic-tiktok"/></svg><svg class="logo"><use href="#ic-instagram"/></svg></div><div class="stat num" data-count="43" data-suffix="K">0</div><div class="stat-label">new followers</div></div>
       <div><div class="plogos"><svg class="logo"><use href="#ic-tiktok"/></svg><svg class="logo"><use href="#ic-instagram"/></svg></div><div class="stat num" data-count="500" data-suffix="K">0</div><div class="stat-label">likes</div></div>
       <div><div class="plogos"><svg class="logo"><use href="#ic-x"/></svg></div><div class="stat num" data-count="1" data-suffix="M">0</div><div class="stat-label">views on X</div></div>
       <div><div class="plogos"><svg class="logo"><use href="#ic-reddit"/></svg></div><div class="stat num" data-count="3" data-suffix="K">0</div><div class="stat-label">upvotes on Reddit</div></div>
     </div>
-    <p class="src reveal">Rolling 90-day analytics across TikTok, Instagram, X and Reddit, 2025. 94% of views from non-followers.</p>
-  </section>
-
-  <!-- 3 EXPLORADOR.PT -->
-  <section class="slide">
-    <p class="kicker reveal">The product, explorador.pt</p>
-    <div class="row" style="gap:40px; align-items:stretch">
-      <div class="grow col reveal" style="justify-content:center">
-        <h2>Tinder for your next home,<br>the first <span class="accent">AI-native agency.</span></h2>
-        <p style="max-width:54ch; margin-bottom:1.2em">Swipe homes across Portugal, then let the AI take over. On a match it contacts <strong>both the buyer and the seller</strong>, qualifies them, answers questions, books the visit and automates the whole sale to close. No 5% broker, no exclusivity games.</p>
-        <div class="chart-wrap" style="padding:20px 22px 12px">
-          <div class="chart-title">Qualified buyers signed up</div>
-          <svg viewBox="0 0 520 130" width="100%" height="120" aria-label="signups growth">
-            <defs><linearGradient id="gb" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0" stop-color="#2563eb" stop-opacity=".35"/><stop offset="1" stop-color="#2563eb" stop-opacity="0"/>
-            </linearGradient></defs>
-            <path class="area" fill="url(#gb)" d="M30,108 C120,104 190,96 270,78 C350,60 410,36 500,14 L500,120 L30,120 Z"/>
-            <path class="draw" fill="none" stroke="#2563eb" stroke-width="4" stroke-linecap="round" d="M30,108 C120,104 190,96 270,78 C350,60 410,36 500,14"/>
-            <g font-family="Sora" font-size="10" fill="#94a3b8" text-anchor="middle"><text x="30" y="118">month 0</text><text x="500" y="122">month 2</text></g>
-          </svg>
-          <div style="display:flex; justify-content:space-between; align-items:baseline; margin-top:4px">
-            <div><span class="stat num" data-count="5000" data-comma="1" style="font-size:2.2rem">0</span><span class="stat-label" style="display:inline; margin-left:8px">buyers in 2 months</span></div>
-            <div style="text-align:right"><span class="stat ink" style="font-size:2.2rem">€0</span><span class="stat-label" style="display:inline; margin-left:8px">on marketing</span></div>
-          </div>
-        </div>
-        <div class="card reveal" style="margin-top:18px; background:linear-gradient(90deg,rgba(37,99,235,.06),rgba(56,189,248,.05)); border-color:#dbe4f5">
-          <h3>Portugal's biggest real estate marketplace sued us.</h3>
-          <p>We took it as proof we're a threat to the old model. <strong>We didn't stop.</strong></p>
-        </div>
-      </div>
-      <div class="phones reveal" style="flex-direction:column; align-items:center; justify-content:center">
-        <div class="phone" style="width:214px; aspect-ratio:676/1482"><video src="assets/demo-tinder.mp4" poster="assets/demo-tinder.jpg" autoplay muted loop playsinline></video><span class="tag">Live app</span></div>
-      </div>
+    <div class="reveal" style="margin-top:14px; background:#fff; border-radius:16px; padding:14px 22px; box-shadow:0 12px 30px rgba(0,0,0,.28)">
+      <h3 style="color:#0f172b; margin-bottom:.15em">Portugal's biggest real estate marketplace sued us.</h3>
+      <p style="color:#475569; margin:0; font-size:.95rem">We took it as proof we're a threat to the old model. <strong style="color:#0f172b">We didn't stop.</strong></p>
     </div>
   </section>
 

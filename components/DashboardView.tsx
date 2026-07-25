@@ -71,7 +71,7 @@ export default function DashboardView({ lang }: { lang: Locale }) {
 
   const t = lang === "en"
     ? {
-        title: "Your account", empty: "No active position yet.", start: "Start the bridge",
+        title: "Your account", empty: "No active position yet.", start: "Start the loan",
         loaned: "Loaned", outstanding: "Outstanding", owed: "Owed now", paidBack: "Paid back", apr: "Borrow APR",
         houseTitle: "HOUSE tokens", minted: "Total minted", inVault: "In the collateral vault", inWalletL: "In your wallet",
         collateralPledged: "locked as collateral", releaseNote: "The rest is already in your wallet; repaying in full releases the collateral too.", peg: "1 HOUSE = €1 of VPT.",
@@ -79,7 +79,7 @@ export default function DashboardView({ lang }: { lang: Locale }) {
         property: "Property", vpt: "VPT value",
       }
     : {
-        title: "A sua conta", empty: "Ainda não há posição ativa.", start: "Iniciar a ponte",
+        title: "A sua conta", empty: "Ainda não há posição ativa.", start: "Iniciar o empréstimo",
         loaned: "Emprestado", outstanding: "Em dívida (capital)", owed: "Em dívida agora", paidBack: "Reembolsado", apr: "TAN",
         houseTitle: "Tokens HOUSE", minted: "Total emitido", inVault: "No vault de garantia", inWalletL: "Na sua carteira",
         collateralPledged: "bloqueados como garantia", releaseNote: "O restante já está na sua carteira; reembolsar na totalidade liberta também a garantia.", peg: "1 HOUSE = €1 de VPT.",
@@ -97,7 +97,7 @@ export default function DashboardView({ lang }: { lang: Locale }) {
       <div className="mx-auto max-w-5xl px-4 py-16 text-center">
         <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100 sm:text-3xl">{t.title}</h1>
         <p className="mt-3 text-slate-600 dark:text-slate-400">{t.empty}</p>
-        <Link href={`/${lang}/bridge`} className="mt-6 inline-flex h-11 items-center justify-center rounded-lg bg-[var(--color-primary)] px-6 text-sm font-semibold text-white transition hover:bg-blue-700">
+        <Link href={`/${lang}/loan`} className="mt-6 inline-flex h-11 items-center justify-center rounded-lg bg-[var(--color-primary)] px-6 text-sm font-semibold text-white transition hover:bg-blue-700">
           {t.start} →
         </Link>
       </div>
@@ -146,7 +146,13 @@ export default function DashboardView({ lang }: { lang: Locale }) {
         {stat(t.owed, `$${fmt(owedNow)}`, true)}
         {stat(t.paidBack, `$${fmt(loan.repaidUsdc ?? 0)}`)}
       </div>
-      {loan.live?.rateBps ? <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">{t.apr}: {pct(loan.live.rateBps)}</p> : null}
+      {loan.live?.rateBps ? (
+        <div className="mt-4 inline-flex items-center gap-2 rounded-full bg-[var(--color-primary)]/10 px-4 py-2 text-sm font-semibold text-[var(--color-primary)] dark:bg-[var(--color-primary)]/20">
+          <span className="text-base">📈</span>
+          <span className="uppercase tracking-wider text-xs text-[var(--color-primary)]/80">{t.apr}</span>
+          <span className="text-base font-bold">{pct(loan.live.rateBps)}</span>
+        </div>
+      ) : null}
 
       <div className="mt-8 rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200/70 dark:bg-[var(--color-card)] dark:ring-slate-700 sm:p-8">
         <h2 className="mb-4 text-lg font-bold text-slate-800 dark:text-slate-100">{t.houseTitle}</h2>

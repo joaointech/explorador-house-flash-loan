@@ -34,13 +34,13 @@ export type Dictionary = {
 };
 
 const pt: Dictionary = {
-  nav: { how: "Como funciona", bridge: "Ponte", loans: "Empréstimos", dashboard: "Painel", connect: "Entrar" },
+  nav: { how: "Como funciona", bridge: "Pedir empréstimo", loans: "Empréstimos", dashboard: "Painel", connect: "Entrar" },
   hero: {
-    kicker: "Liquidez-ponte para o seu imóvel",
+    kicker: "Um empréstimo contra o seu imóvel",
     title1: "Compre a nova casa",
     title2: "antes de vender a atual",
     lead: "Faltam-lhe fundos para o CPCV da casa nova enquanto a sua ainda não vendeu? Colateralize o imóvel que está a vender e levante liquidez em minutos — sem banco, sem espera.",
-    ctaPrimary: "Iniciar a ponte",
+    ctaPrimary: "Iniciar o empréstimo",
     ctaSecondary: "Ver como funciona",
     stat1: "24h",
     stat1Label: "até à liquidez",
@@ -52,7 +52,7 @@ const pt: Dictionary = {
   problem: {
     kicker: "O problema",
     title: "O capital fica preso na casa que ainda não vendeu",
-    body: "Em Portugal, para assinar o CPCV da casa nova é preciso o sinal — muitas vezes 10 a 20% — imediatamente. Mas o seu dinheiro está imobilizado no imóvel que está a vender. Os empréstimos-ponte da banca são lentos, cheios de papelada e nem sempre aprovados a tempo.",
+    body: "Em Portugal, para assinar o CPCV da casa nova é preciso o sinal — muitas vezes 10 a 20% — imediatamente. Mas o seu dinheiro está imobilizado no imóvel que está a vender. Os empréstimos da banca são lentos, cheios de papelada e nem sempre aprovados a tempo.",
   },
   how: {
     kicker: "Como funciona",
@@ -77,24 +77,24 @@ const pt: Dictionary = {
   },
   cta: {
     title: "Pronto para desbloquear o valor da sua casa?",
-    body: "Comece a ponte agora. Sem compromisso até confirmar os valores extraídos pela IA.",
-    button: "Iniciar a ponte",
+    body: "Comece o empréstimo agora. Sem compromisso até confirmar os valores extraídos pela IA.",
+    button: "Iniciar o empréstimo",
   },
   footer: {
-    tagline: "Liquidez-ponte imobiliária, colateralizada e auditável on-chain.",
+    tagline: "Empréstimos imobiliários, colateralizados e auditáveis on-chain.",
     built: "Construído na ETHGlobal Lisboa 2026 · Sui · Walrus · World App",
     rights: "Todos os direitos reservados.",
   },
 };
 
 const en: Dictionary = {
-  nav: { how: "How it works", bridge: "Bridge", loans: "Loans", dashboard: "Dashboard", connect: "Sign in" },
+  nav: { how: "How it works", bridge: "Get a loan", loans: "Loans", dashboard: "Dashboard", connect: "Sign in" },
   hero: {
-    kicker: "Bridge liquidity for your home",
+    kicker: "A loan against your home equity",
     title1: "Buy the new home",
     title2: "before you sell the old one",
     lead: "Short on funds for the new house's CPCV while yours hasn't sold yet? Collateralize the home you're selling and draw liquidity in minutes — no bank, no waiting.",
-    ctaPrimary: "Start the bridge",
+    ctaPrimary: "Start the loan",
     ctaSecondary: "See how it works",
     stat1: "24h",
     stat1Label: "to liquidity",
@@ -106,7 +106,7 @@ const en: Dictionary = {
   problem: {
     kicker: "The problem",
     title: "Your capital is locked in the home you haven't sold",
-    body: "In Portugal, signing the new home's CPCV means paying the signal — often 10 to 20% — right away. But your money is tied up in the property you're selling. Bank bridge loans are slow, paperwork-heavy, and not always approved in time.",
+    body: "In Portugal, signing the new home's CPCV means paying the signal — often 10 to 20% — right away. But your money is tied up in the property you're selling. Bank loans are slow, paperwork-heavy, and not always approved in time.",
   },
   how: {
     kicker: "How it works",
@@ -131,11 +131,11 @@ const en: Dictionary = {
   },
   cta: {
     title: "Ready to unlock your home's value?",
-    body: "Start the bridge now. No commitment until you confirm the values extracted by AI.",
-    button: "Start the bridge",
+    body: "Start the loan now. No commitment until you confirm the values extracted by AI.",
+    button: "Start the loan",
   },
   footer: {
-    tagline: "Real-estate bridge liquidity, collateralized and auditable on-chain.",
+    tagline: "Real-estate loans, collateralized and auditable on-chain.",
     built: "Built at ETHGlobal Lisbon 2026 · Sui · Walrus · World App",
     rights: "All rights reserved.",
   },

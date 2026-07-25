@@ -114,11 +114,11 @@ export default function StepDocuments({ lang, session, patch, next, back, canBac
                   <button
                     type="button"
                     onClick={() => inputRefs[kind].current?.click()}
-                    className="flex w-full flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-[var(--color-border)] bg-stone-50/50 px-4 py-8 text-center transition hover:border-[var(--color-primary)] hover:bg-blue-50/40 dark:bg-slate-800/40"
+                    className="flex w-full min-w-0 flex-col items-center justify-center gap-2 overflow-hidden rounded-2xl border-2 border-dashed border-[var(--color-border)] bg-stone-50/50 px-4 py-8 text-center transition hover:border-[var(--color-primary)] hover:bg-blue-50/40 dark:bg-slate-800/40"
                   >
                     <span className="text-3xl">{docs[kind] ? "✅" : "📄"}</span>
                     <span className="text-sm font-medium text-slate-600 dark:text-slate-300">{t.drop}</span>
-                    {docs[kind] && <span className="mt-1 truncate text-xs text-[var(--color-primary)]">{docs[kind]!.name}</span>}
+                    {docs[kind] && <span className="mt-1 block w-full max-w-full truncate px-2 text-center text-xs text-[var(--color-primary)]" title={docs[kind]!.name}>{docs[kind]!.name}</span>}
                   </button>
                   <input ref={inputRefs[kind]} type="file" accept="application/pdf,image/*" hidden onChange={onPick(kind)} />
                 </div>

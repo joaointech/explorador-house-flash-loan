@@ -35,7 +35,7 @@ export default async function Landing({ params }: { params: Promise<{ lang: stri
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-3">
               <Link
-                href={`/${lang}/bridge`}
+                href={`/${lang}/loan`}
                 className="inline-flex h-12 items-center justify-center rounded-xl bg-[var(--color-primary)] px-7 text-base font-semibold text-white shadow-[0_8px_24px_rgba(37,99,235,0.35)] transition-all duration-200 hover:scale-[1.02] hover:bg-[var(--color-primary-dark)] hover:shadow-[0_12px_32px_rgba(37,99,235,0.5)]"
               >
                 {dict.hero.ctaPrimary}
@@ -143,7 +143,7 @@ export default async function Landing({ params }: { params: Promise<{ lang: stri
           <h2 className="mx-auto max-w-2xl text-2xl font-bold sm:text-3xl">{dict.cta.title}</h2>
           <p className="mx-auto mt-3 max-w-xl text-white/85">{dict.cta.body}</p>
           <Link
-            href={`/${lang}/bridge`}
+            href={`/${lang}/loan`}
             className="mt-8 inline-flex h-12 items-center justify-center rounded-xl bg-white px-7 text-base font-semibold text-[var(--color-primary)] shadow-lg transition-all hover:scale-[1.02]"
           >
             {dict.cta.button}

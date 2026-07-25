@@ -50,7 +50,7 @@ export default function LoansView({ lang }: { lang: Locale }) {
   const t = lang === "en"
     ? {
         title: "Loan management", sub: "Every bridge position, live from Sui. Visit your account page to repay one of yours.",
-        empty: "No loans yet.", start: "Start the bridge", myAccount: "Your account",
+        empty: "No loans yet.", start: "Start the loan", myAccount: "Your account",
         treasury: "Treasury", tSui: "SUI balance", tEusd: "eUSD minted", tAddr: "Address",
         util: "Pool utilization", curRate: "borrow APR now", yieldEarned: "Yield earned",
         rate: "Borrow APR", interest: "Interest accrued", owed: "Owed now", proj90: "≈ interest if held 90 days",
@@ -59,7 +59,7 @@ export default function LoansView({ lang }: { lang: Locale }) {
       }
     : {
         title: "Gestão de empréstimos", sub: "Todas as posições-ponte, em tempo real na Sui. Visite a sua conta para reembolsar uma sua.",
-        empty: "Ainda não há empréstimos.", start: "Iniciar a ponte", myAccount: "A sua conta",
+        empty: "Ainda não há empréstimos.", start: "Iniciar o empréstimo", myAccount: "A sua conta",
         treasury: "Tesouraria", tSui: "Saldo SUI", tEusd: "eUSD emitido", tAddr: "Endereço",
         util: "Utilização do pool", curRate: "TAN agora", yieldEarned: "Rendimento gerado",
         rate: "TAN", interest: "Juros acumulados", owed: "Em dívida agora", proj90: "≈ juros se mantido 90 dias",
@@ -136,7 +136,7 @@ export default function LoansView({ lang }: { lang: Locale }) {
         ) : loans.length === 0 ? (
           <div className="rounded-3xl bg-white p-8 text-center shadow-sm ring-1 ring-slate-200/70 dark:bg-[var(--color-card)] dark:ring-slate-700">
             <p className="text-slate-600 dark:text-slate-400">{t.empty}</p>
-            <Link href={`/${lang}/bridge`} className="mt-4 inline-flex h-11 items-center justify-center rounded-lg bg-[var(--color-primary)] px-6 text-sm font-semibold text-white transition hover:bg-blue-700">
+            <Link href={`/${lang}/loan`} className="mt-4 inline-flex h-11 items-center justify-center rounded-lg bg-[var(--color-primary)] px-6 text-sm font-semibold text-white transition hover:bg-blue-700">
               {t.start} →
             </Link>
           </div>

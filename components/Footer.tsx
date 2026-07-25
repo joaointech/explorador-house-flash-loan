@@ -18,7 +18,7 @@ export default function Footer({ lang, dict }: { lang: Locale; dict: Dictionary 
         <div className="space-y-2 text-sm">
           <p className="font-[family-name:var(--font-display)] text-base font-bold text-white">{dict.nav.how}</p>
           <a href={`/${lang}#how`} className="block text-white/80 transition-opacity hover:opacity-80">{dict.nav.how}</a>
-          <a href={`/${lang}/bridge`} className="block text-white/80 transition-opacity hover:opacity-80">{dict.nav.bridge}</a>
+          <a href={`/${lang}/loan`} className="block text-white/80 transition-opacity hover:opacity-80">{dict.nav.bridge}</a>
           <a href={`/${lang}/dashboard`} className="block text-white/80 transition-opacity hover:opacity-80">{dict.nav.dashboard}</a>
         </div>
 

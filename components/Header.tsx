@@ -9,7 +9,7 @@ import type { Dictionary } from "@/lib/dictionaries";
 export default function Header({ lang, dict }: { lang: Locale; dict: Dictionary }) {
   const nav = [
     { href: `/${lang}#how`, label: dict.nav.how },
-    { href: `/${lang}/bridge`, label: dict.nav.bridge },
+    { href: `/${lang}/loan`, label: dict.nav.bridge },
     { href: `/${lang}/loans`, label: dict.nav.loans },
     { href: `/${lang}/dashboard`, label: dict.nav.dashboard },
   ];

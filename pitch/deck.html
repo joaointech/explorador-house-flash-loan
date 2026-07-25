@@ -88,6 +88,11 @@
   .tech{display:inline-flex; align-items:center; gap:7px; padding:9px 15px; border-radius:12px; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12); font-size:.86rem; font-weight:600; color:#fff; margin:5px}
   .tech b{color:var(--sky)}
 
+  .logostrip{display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-top:6px}
+  .logostrip .lbl{font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.16em; color:rgba(255,255,255,.55)}
+  .logochip{display:inline-flex; align-items:center; justify-content:center; background:#fff; border-radius:12px; padding:12px 18px; height:56px; box-shadow:0 8px 22px rgba(0,0,0,.25)}
+  .logochip img{height:26px; width:auto; display:block}
+
   .logo{width:20px; height:20px; display:inline-block; vertical-align:middle}
   .plogos{display:flex; gap:7px; align-items:center; margin-bottom:.5em; color:var(--sky)}
   .plogos.ink{color:var(--muted)}
@@ -347,7 +352,13 @@
         <span class="tech"><b>Claude</b> parsing + agent</span>
       </div>
     </div>
-    <p class="src reveal">Package, HOUSE coin, eUSD and every tokenize, draw and repay verified live on Sui testnet.</p>
+    <div class="logostrip reveal" style="margin-top:26px">
+      <span class="lbl">Built with</span>
+      <span class="logochip"><img src="assets/logos/sui.png" alt="Sui"></span>
+      <span class="logochip"><img src="assets/logos/walrus.png" alt="Walrus"></span>
+      <span class="logochip"><img src="assets/logos/world.png" alt="World ID"></span>
+    </div>
+    <p class="src reveal" style="margin-top:14px">Package, HOUSE coin, eUSD and every tokenize, draw and repay verified live on Sui testnet.</p>
   </section>
 
   <!-- 7 ARCHITECTURE -->

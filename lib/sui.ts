@@ -375,6 +375,41 @@ export async function treasurySummary(): Promise<{ address: string; suiBalance: 
   }
 }
 
+// ── Full treasury wallet detail (all coin balances + eUSD supply) ────
+const DECIMALS: Record<string, number> = { SUI: 9, EUSD: 6, HOUSE: 0, WAL: 9, USDC: 6 };
+export type TreasuryDetail = {
+  address: string;
+  suiBalance: number;
+  eusdSupply: number;
+  balances: { coinType: string; symbol: string; amount: number }[];
+  demo: boolean;
+};
+export async function treasuryDetail(): Promise<TreasuryDetail> {
+  const EUSD = process.env.EUSD_COIN_TYPE;
+  if (!suiConfigured()) return { address: "", suiBalance: 0, eusdSupply: 0, balances: [], demo: true };
+  const { client, sender } = await ctx();
+  try {
+    const all = await client.getAllBalances({ owner: sender });
+    const balances = all
+      .map((b) => {
+        const symbol = b.coinType.split("::").pop() || b.coinType.slice(0, 8);
+        const dp = DECIMALS[symbol] ?? 9;
+        return { coinType: b.coinType, symbol, amount: Number(BigInt(b.totalBalance)) / 10 ** dp };
+      })
+      .filter((b) => b.amount > 0)
+      .sort((a, b) => b.amount - a.amount);
+    const sui = balances.find((b) => b.symbol === "SUI")?.amount ?? 0;
+    let eusdSupply = 0;
+    if (EUSD) {
+      const s = await client.getTotalSupply({ coinType: EUSD });
+      eusdSupply = Number(BigInt(s.value)) / 1e6;
+    }
+    return { address: sender, suiBalance: sui, eusdSupply, balances, demo: false };
+  } catch {
+    return { address: sender, suiBalance: 0, eusdSupply: 0, balances: [], demo: false };
+  }
+}
+
 // ── HOUSE balance actually held in a wallet (non-zero only after payoff) ─
 export async function houseBalance(owner: string): Promise<number> {
   const coinType = process.env.HOUSE_COIN_TYPE || `${PKG}::house::HOUSE`;

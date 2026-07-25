@@ -130,6 +130,9 @@ const isReal = (v?: string) => Boolean(v && v.startsWith("0x")) || Boolean(v && 
 export function suiscanTx(digest: string, net = NET) {
   return `https://suiscan.xyz/${net}/tx/${digest}`;
 }
+export function suiscanAccount(addr: string, net = NET) {
+  return `https://suiscan.xyz/${net}/account/${addr}`;
+}
 export function suiscanObject(id: string, net = NET) {
   return `https://suiscan.xyz/${net}/object/${id}`;
 }

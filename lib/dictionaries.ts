@@ -7,7 +7,7 @@ import type { Locale } from "./i18n";
  * inlined per-component with `lang === "en" ? … : …` ternaries.
  */
 export type Dictionary = {
-  nav: { how: string; bridge: string; loans: string; dashboard: string; connect: string };
+  nav: { how: string; bridge: string; loans: string; treasury: string; dashboard: string; connect: string };
   hero: {
     kicker: string;
     title1: string;
@@ -34,7 +34,7 @@ export type Dictionary = {
 };
 
 const pt: Dictionary = {
-  nav: { how: "Como funciona", bridge: "Pedir empréstimo", loans: "Empréstimos", dashboard: "Painel", connect: "Entrar" },
+  nav: { how: "Como funciona", bridge: "Pedir empréstimo", loans: "Empréstimos", treasury: "Tesouraria", dashboard: "Painel", connect: "Entrar" },
   hero: {
     kicker: "Um empréstimo contra o seu imóvel",
     title1: "Compre a nova casa",
@@ -88,7 +88,7 @@ const pt: Dictionary = {
 };
 
 const en: Dictionary = {
-  nav: { how: "How it works", bridge: "Get a loan", loans: "Loans", dashboard: "Dashboard", connect: "Sign in" },
+  nav: { how: "How it works", bridge: "Get a loan", loans: "Loans", treasury: "Treasury", dashboard: "Dashboard", connect: "Sign in" },
   hero: {
     kicker: "A loan against your home equity",
     title1: "Buy the new home",

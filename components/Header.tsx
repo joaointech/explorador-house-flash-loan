@@ -11,6 +11,7 @@ export default function Header({ lang, dict }: { lang: Locale; dict: Dictionary 
     { href: `/${lang}#how`, label: dict.nav.how },
     { href: `/${lang}/loan`, label: dict.nav.bridge },
     { href: `/${lang}/loans`, label: dict.nav.loans },
+    { href: `/${lang}/treasury`, label: dict.nav.treasury },
     { href: `/${lang}/dashboard`, label: dict.nav.dashboard },
   ];
 

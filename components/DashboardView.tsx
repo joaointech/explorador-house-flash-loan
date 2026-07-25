@@ -74,7 +74,7 @@ export default function DashboardView({ lang }: { lang: Locale }) {
         title: "Your account", empty: "No active position yet.", start: "Start the bridge",
         loaned: "Loaned", outstanding: "Outstanding", owed: "Owed now", paidBack: "Paid back", apr: "Borrow APR",
         houseTitle: "HOUSE tokens", minted: "Total minted", inVault: "In the collateral vault", inWalletL: "In your wallet",
-        collateralPledged: "locked as collateral", releaseNote: "The rest is already in your wallet; repaying in full releases the collateral too.",
+        collateralPledged: "locked as collateral", releaseNote: "The rest is already in your wallet; repaying in full releases the collateral too.", peg: "1 HOUSE = €1 of VPT.",
         docsTitle: "Documents", anchor: "Doc hash (Sui)", vault: "Collateral vault", pay: "Disbursement (Sui tx)", repayTx: "Repayment (Sui tx)",
         property: "Property", vpt: "VPT value",
       }
@@ -82,7 +82,7 @@ export default function DashboardView({ lang }: { lang: Locale }) {
         title: "A sua conta", empty: "Ainda não há posição ativa.", start: "Iniciar a ponte",
         loaned: "Emprestado", outstanding: "Em dívida (capital)", owed: "Em dívida agora", paidBack: "Reembolsado", apr: "TAN",
         houseTitle: "Tokens HOUSE", minted: "Total emitido", inVault: "No vault de garantia", inWalletL: "Na sua carteira",
-        collateralPledged: "bloqueados como garantia", releaseNote: "O restante já está na sua carteira; reembolsar na totalidade liberta também a garantia.",
+        collateralPledged: "bloqueados como garantia", releaseNote: "O restante já está na sua carteira; reembolsar na totalidade liberta também a garantia.", peg: "1 HOUSE = €1 de VPT.",
         docsTitle: "Documentos", anchor: "Hash do doc (Sui)", vault: "Vault de garantia", pay: "Pagamento (Transação Sui)", repayTx: "Reembolso (Transação Sui)",
         property: "Imóvel", vpt: "Valor VPT",
       };
@@ -104,12 +104,14 @@ export default function DashboardView({ lang }: { lang: Locale }) {
     );
   }
 
-  const stat = (label: string, value: string, accent = false) => (
+  const stat = (label: string, value: string, accent = false, sub?: string) => (
     <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200/70 dark:bg-[var(--color-card)] dark:ring-slate-700">
       <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{label}</p>
       <p className={`mt-1 text-2xl font-bold ${accent ? "text-[var(--color-primary)]" : "text-slate-800 dark:text-slate-100"}`}>{value}</p>
+      {sub && <p className="mt-0.5 text-xs text-slate-400 dark:text-slate-500">{sub}</p>}
     </div>
   );
+  const eur = (n: number) => `≈ €${fmt(n)}`;
 
   const auditRow = (label: string, value: string, href?: string) => (
     <div className="flex items-center justify-between gap-3 border-b border-[var(--color-border)] py-3 text-sm last:border-0">
@@ -149,12 +151,12 @@ export default function DashboardView({ lang }: { lang: Locale }) {
       <div className="mt-8 rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200/70 dark:bg-[var(--color-card)] dark:ring-slate-700 sm:p-8">
         <h2 className="mb-4 text-lg font-bold text-slate-800 dark:text-slate-100">{t.houseTitle}</h2>
         <div className="grid gap-4 sm:grid-cols-3">
-          {stat(t.minted, `${fmt(loan.vpt)} HOUSE`)}
-          {stat(t.inVault, `${fmt(inVault)} HOUSE`)}
-          {stat(t.inWalletL, `${fmt(inWallet)} HOUSE`, true)}
+          {stat(t.minted, `${fmt(loan.vpt)} HOUSE`, false, eur(loan.vpt))}
+          {stat(t.inVault, `${fmt(inVault)} HOUSE`, false, eur(inVault))}
+          {stat(t.inWalletL, `${fmt(inWallet)} HOUSE`, true, eur(inWallet))}
         </div>
         <p className="mt-3 text-sm text-slate-500 dark:text-slate-400">
-          {fmt(locked)} HOUSE {t.collateralPledged}. {t.releaseNote}
+          {fmt(locked)} HOUSE ({eur(locked)}) {t.collateralPledged}. {t.releaseNote} {t.peg}
         </p>
       </div>
 

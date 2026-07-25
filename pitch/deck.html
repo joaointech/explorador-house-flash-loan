@@ -1,0 +1,483 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>explorador Bridge, ETHGlobal Lisbon 2026</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --primary:#2563eb; --sky:#38bdf8; --navy:#0f172a; --ink:#0f172b;
+    --muted:#64748b; --slate:#475569; --paper:#faf8f3; --line:#e6e1d6; --emerald:#10b981;
+  }
+  *{box-sizing:border-box; margin:0; padding:0}
+  html,body{height:100%}
+  body{font-family:'Sora',ui-sans-serif,system-ui,sans-serif; background:#0b1120; color:var(--slate); -webkit-font-smoothing:antialiased; overflow:hidden}
+
+  .slide{
+    position:absolute; inset:0; display:none; flex-direction:column; justify-content:center;
+    padding:8vh 8vw; background:var(--paper); color:var(--slate);
+  }
+  .slide.active{display:flex}
+  .slide.dark{background:var(--navy); color:rgba(255,255,255,.82)}
+  .slide.dark h1,.slide.dark h2,.slide.dark h3{color:#fff}
+
+  h1{font-size:clamp(2.1rem,5.2vw,3.8rem); color:var(--ink); font-weight:800; letter-spacing:-.02em; line-height:1.05}
+  h2{font-size:clamp(1.7rem,3.8vw,2.8rem); color:var(--ink); font-weight:800; letter-spacing:-.02em; line-height:1.1; margin-bottom:.6em}
+  h3{font-size:1.02rem; color:var(--ink); font-weight:700; margin-bottom:.3em}
+  .slide.dark h3{color:#fff}
+  p{line-height:1.55}
+  strong{color:var(--ink)} .slide.dark strong{color:#fff}
+  .accent{color:var(--primary)} .slide.dark .accent{color:var(--sky)}
+  .glow{background:linear-gradient(90deg,#1d4ed8,#2563eb 55%,#38bdf8);-webkit-background-clip:text;background-clip:text;color:transparent}
+
+  .kicker{text-transform:uppercase; letter-spacing:.24em; font-size:.72rem; font-weight:700; color:var(--primary); margin-bottom:1.3em}
+  .slide.dark .kicker{color:var(--sky)}
+
+  .brand{display:flex; align-items:center; gap:14px; margin-bottom:2.4rem}
+  .brand img{width:54px; height:52px; filter:drop-shadow(0 6px 16px rgba(15,23,42,.45))}
+  .brand .wm{font-weight:800; font-size:1.35rem; letter-spacing:-.02em; color:#fff; line-height:1.1}
+  .brand .wm small{display:block; font-weight:600; font-size:.62rem; letter-spacing:.2em; text-transform:uppercase; color:var(--sky); margin-top:3px}
+
+  .pill{display:inline-flex; align-items:center; gap:9px; padding:9px 18px; border-radius:999px; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.14); font-size:.84rem; font-weight:600; color:rgba(255,255,255,.85)}
+  .slide:not(.dark) .pill{background:#fff; border-color:var(--line); color:var(--slate)}
+  .pill .dot{width:8px; height:8px; border-radius:50%; background:var(--emerald); box-shadow:0 0 0 4px rgba(16,185,129,.18)}
+
+  .grid{display:grid; gap:22px}
+  .g2{grid-template-columns:1fr 1fr}
+  .g3{grid-template-columns:repeat(3,1fr)}
+
+  .card{background:#fff; border:1px solid var(--line); border-radius:20px; padding:26px 24px; box-shadow:0 12px 34px rgba(15,23,42,.06)}
+  .slide.dark .card{background:rgba(255,255,255,.06); border-color:rgba(255,255,255,.12); box-shadow:none}
+  .card p{font-size:.95rem; color:var(--muted)}
+  .slide.dark .card p{color:rgba(255,255,255,.72)}
+
+  .stat{font-size:clamp(2.2rem,4.4vw,3.4rem); font-weight:800; color:var(--primary); line-height:1; letter-spacing:-.03em}
+  .slide.dark .stat{color:var(--sky)}
+  .stat.ink{color:var(--ink)} .slide.dark .stat.ink{color:#fff}
+  .stat-label{font-size:.82rem; color:var(--muted); margin-top:.55em; line-height:1.4}
+  .slide.dark .stat-label{color:rgba(255,255,255,.66)}
+
+  .quote{font-size:clamp(1.8rem,4.2vw,3rem); font-weight:800; color:var(--ink); line-height:1.14; letter-spacing:-.02em}
+  .slide.dark .quote{color:#fff}
+  .src{margin-top:1.3em; color:var(--muted); font-size:.72rem}
+  .slide.dark .src{color:rgba(255,255,255,.5)}
+
+  ul.clean{list-style:none; display:flex; flex-direction:column; gap:.7em}
+  ul.clean li{position:relative; padding-left:1.6em; font-size:1rem; line-height:1.5}
+  ul.clean li:before{content:"→"; position:absolute; left:0; color:var(--primary); font-weight:800}
+  .slide.dark ul.clean li:before{color:var(--sky)}
+
+  .phones{display:flex; gap:18px; align-items:center}
+  .phone{width:158px; aspect-ratio:9/16; border-radius:22px; overflow:hidden; border:3px solid rgba(15,23,42,.12); background:#000; box-shadow:0 20px 46px rgba(15,23,42,.3); position:relative}
+  .slide.dark .phone{border-color:rgba(255,255,255,.14)}
+  .phone video,.phone img{width:100%; height:100%; object-fit:cover; display:block}
+  .phone .tag{position:absolute; left:8px; bottom:8px; font-size:.6rem; font-weight:700; color:#fff; background:rgba(0,0,0,.55); padding:3px 9px; border-radius:999px}
+
+  .flow{display:grid; grid-template-columns:repeat(6,1fr); gap:14px; margin-top:.5em}
+  .step{background:#fff; border:1px solid var(--line); border-radius:16px; padding:18px 15px}
+  .slide.dark .step{background:rgba(255,255,255,.05); border-color:rgba(255,255,255,.12)}
+  .step .n{font-size:.68rem; font-weight:800; color:var(--primary); letter-spacing:.14em}
+  .slide.dark .step .n{color:var(--sky)}
+  .step h3{font-size:.94rem; margin:.4em 0 .3em}
+  .step p{font-size:.76rem; color:var(--muted); line-height:1.45}
+  .slide.dark .step p{color:rgba(255,255,255,.66)}
+
+  .tech{display:inline-flex; align-items:center; gap:7px; padding:9px 15px; border-radius:12px; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12); font-size:.86rem; font-weight:600; color:#fff; margin:5px}
+  .tech b{color:var(--sky)}
+
+  .logo{width:20px; height:20px; display:inline-block; vertical-align:middle}
+  .plogos{display:flex; gap:7px; align-items:center; margin-bottom:.5em; color:var(--sky)}
+  .plogos.ink{color:var(--muted)}
+  .thanks-logos{display:flex; gap:20px; align-items:center; color:rgba(255,255,255,.85)}
+  .thanks-logos .logo{width:26px; height:26px}
+  .handle{display:inline-flex; align-items:center; gap:10px; font-size:1.05rem; font-weight:700; color:#fff}
+  .handle .logo{width:24px; height:24px; color:var(--sky)}
+  .qrcard{background:#fff; border-radius:26px; padding:26px; box-shadow:0 24px 60px rgba(0,0,0,.4); display:flex; flex-direction:column; align-items:center; gap:14px}
+  .qrcard img{width:250px; height:250px; display:block}
+  .qrcard .url{font-weight:700; color:var(--ink); font-size:.98rem; letter-spacing:.01em}
+
+  /* architecture flow */
+  .pipe{display:flex; align-items:stretch; margin-top:.3em}
+  .anode{flex:1; min-width:0; background:#fff; border:1px solid var(--line); border-radius:14px; padding:12px 11px; box-shadow:0 8px 22px rgba(15,23,42,.05)}
+  .anode.hot{border-color:#bbf7d0; background:linear-gradient(180deg,#fff,#f4fdf8)}
+  .anode .b{display:inline-block; font-size:10px; font-weight:800; color:#fff; background:var(--primary); border-radius:999px; padding:2px 8px; letter-spacing:.03em}
+  .anode.hot .b{background:var(--emerald)}
+  .anode h4{font-size:.84rem; font-weight:700; color:var(--ink); margin:.5em 0 .2em; line-height:1.12}
+  .anode p{font-size:.63rem; color:var(--muted); line-height:1.32}
+  .arr{display:flex; align-items:center; justify-content:center; width:22px; flex:none; color:#9db8e8; font-weight:800; font-size:1.05rem; transform-origin:left center}
+  .docs{display:flex; flex-direction:column; gap:4px; margin-top:7px}
+  .doc{font-size:.6rem; font-weight:600; color:#2563eb; background:#eef4ff; border:1px solid #dbe4f5; border-radius:7px; padding:3px 7px}
+
+  /* sequential "walk the flow" build */
+  .seq{opacity:0}
+  .slide.active .seq{animation:seqpop .45s cubic-bezier(.2,.7,.2,1) forwards}
+  @keyframes seqpop{from{opacity:0; transform:translateY(10px) scale(.96)}to{opacity:1; transform:none}}
+  .slide.active .arr.seq{animation:arrgrow .32s ease forwards}
+  @keyframes arrgrow{from{opacity:0; transform:scaleX(0)}to{opacity:1; transform:scaleX(1)}}
+  .lane{display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-top:20px}
+  .svc2{background:#fff; border:1px solid var(--line); border-left-width:4px; border-radius:14px; padding:14px 16px}
+  .svc2 h4{font-size:.9rem; font-weight:700; color:var(--ink); display:flex; align-items:center; gap:8px}
+  .svc2 p{font-size:.74rem; color:var(--muted); margin-top:.3em; line-height:1.4}
+  .svc2 .who{font-size:.6rem; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:#94a3b8; margin-top:.5em}
+  .callout{margin-top:20px; display:flex; align-items:center; gap:14px; background:linear-gradient(90deg,rgba(16,185,129,.1),rgba(56,189,248,.08)); border:1px solid #bbf7d0; border-radius:16px; padding:16px 22px}
+  .callout .big{font-size:1.5rem; font-weight:800; color:var(--emerald); white-space:nowrap}
+  .callout p{font-size:.95rem; color:var(--slate)}
+
+  .row{display:flex; gap:34px; align-items:center}
+  .col{display:flex; flex-direction:column}
+  .grow{flex:1}
+
+  .chart-wrap{background:#fff; border:1px solid var(--line); border-radius:20px; padding:24px 26px 16px; box-shadow:0 12px 34px rgba(15,23,42,.06)}
+  .slide.dark .chart-wrap{background:rgba(255,255,255,.05); border-color:rgba(255,255,255,.12); box-shadow:none}
+  .chart-title{font-size:.8rem; font-weight:700; color:var(--ink); margin-bottom:4px}
+  .slide.dark .chart-title{color:#fff}
+  .legend{display:flex; gap:22px; margin-top:8px; font-size:.78rem; font-weight:600}
+  .legend span{display:inline-flex; align-items:center; gap:8px; color:var(--slate)}
+  .slide.dark .legend span{color:rgba(255,255,255,.7)}
+  .legend i{width:15px; height:4px; border-radius:2px; display:inline-block}
+
+  /* draw + reveal effects */
+  .draw{stroke-dasharray:1400; stroke-dashoffset:1400}
+  .slide.active .draw{animation:draw 1.4s cubic-bezier(.4,0,.2,1) forwards}
+  @keyframes draw{to{stroke-dashoffset:0}}
+  .area{opacity:0}
+  .slide.active .area{animation:fadein 1.2s ease .5s forwards}
+  @keyframes fadein{to{opacity:1}}
+  .dotpop{opacity:0}
+  .slide.active .dotpop{animation:pop .5s ease 1.2s forwards}
+  @keyframes pop{0%{opacity:0;transform:scale(0)}70%{transform:scale(1.4)}100%{opacity:1;transform:scale(1)}}
+
+  .reveal{opacity:0; transform:translateY(18px)}
+  .slide.active .reveal{animation:rise .6s cubic-bezier(.2,.7,.2,1) forwards}
+  @keyframes rise{to{opacity:1; transform:translateY(0)}}
+
+  /* chrome */
+  .dots{position:fixed; bottom:18px; left:50%; transform:translateX(-50%); display:flex; gap:8px; z-index:30}
+  .dots button{width:8px; height:8px; border-radius:50%; border:none; background:rgba(148,163,184,.4); cursor:pointer; padding:0; transition:all .25s}
+  .dots button.on{background:var(--primary); width:24px; border-radius:999px}
+  .nav{position:fixed; top:0; bottom:0; width:16vw; z-index:10; cursor:pointer}
+  .nav.left{left:0} .nav.right{right:0}
+  .counter{position:fixed; top:18px; right:24px; font-size:.72rem; font-weight:600; color:rgba(148,163,184,.8); z-index:30}
+  .hint{position:fixed; top:18px; left:24px; font-size:.68rem; color:rgba(148,163,184,.55); z-index:30}
+
+  @media print{
+    body{overflow:visible}
+    .slide{display:flex !important; position:relative; page-break-after:always; height:100vh; inset:auto}
+    .draw{stroke-dashoffset:0} .area,.dotpop,.reveal,.seq{opacity:1; transform:none}
+    .nav,.dots,.counter,.hint{display:none}
+  }
+</style>
+</head>
+<body>
+
+  <!-- brand logo symbols (monochrome, inherit currentColor) -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="ic-tiktok" viewBox="0 0 24 24"><path fill="currentColor" d="M16.6 3c.3 2.1 1.6 3.7 3.6 4v2.5c-1.3 0-2.5-.4-3.6-1.1v6.5a5.7 5.7 0 1 1-5.7-5.7c.3 0 .6 0 .9.1v2.6a3.1 3.1 0 1 0 2.2 3V3h2.6z"/></symbol>
+    <symbol id="ic-instagram" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="5.2"/><circle cx="12" cy="12" r="4"/></g><circle cx="17.4" cy="6.6" r="1.3" fill="currentColor"/></symbol>
+    <symbol id="ic-x" viewBox="0 0 24 24"><path fill="currentColor" d="M18.9 2H22l-7.4 8.4L23.2 22h-6.8l-5-6.6L5.7 22H2.5l7.9-9L1.3 2h7l4.5 6zM17.7 20.1h1.7L7.3 3.8H5.5z"/></symbol>
+    <symbol id="ic-reddit" viewBox="0 0 24 24"><path fill="currentColor" d="M22 11.8a2.1 2.1 0 0 0-3.6-1.5 10.3 10.3 0 0 0-5.2-1.6l.9-4.2 2.9.6a1.5 1.5 0 1 0 .2-1l-3.5-.7a.5.5 0 0 0-.6.4l-1 4.9a10.4 10.4 0 0 0-5.4 1.6A2.1 2.1 0 1 0 3 15.2a4 4 0 0 0 0 .5c0 3 3.9 5.4 8.7 5.4s8.7-2.4 8.7-5.4a4 4 0 0 0 0-.5A2.1 2.1 0 0 0 22 11.8zM7 13.6a1.5 1.5 0 1 1 3 0 1.5 1.5 0 0 1-3 0zm8.3 4.2a5.9 5.9 0 0 1-3.4.9 5.9 5.9 0 0 1-3.4-.9.5.5 0 0 1 .6-.8 5 5 0 0 0 2.8.7 5 5 0 0 0 2.8-.7.5.5 0 1 1 .6.8zm-.5-2.7a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z"/></symbol>
+  </svg>
+
+  <!-- 0 COVER -->
+  <section class="slide dark active">
+    <div class="brand reveal"><img src="assets/explorador-mark.png" alt="explorador"><div class="wm">explorador<small>AI real estate · Portugal</small></div></div>
+    <h1 class="reveal">The house you're selling<br>can pay for the one <span class="glow">you're buying.</span></h1>
+    <p class="reveal" style="margin-top:1.3rem; max-width:50ch; font-size:1.15rem; color:rgba(255,255,255,.72)">
+      Draw stablecoin liquidity against your home, so you can sign for the next one before this one sells.
+    </p>
+    <div class="reveal" style="margin-top:2.2rem; display:flex; gap:12px; flex-wrap:wrap">
+      <span class="pill"><span class="dot"></span> ETHGlobal Lisbon 2026</span>
+      <span class="pill">Built on Sui</span>
+    </div>
+  </section>
+
+  <!-- 1 CRISIS -->
+  <section class="slide">
+    <p class="kicker reveal">Portugal, 2026</p>
+    <h2 class="reveal">A young person on an average salary <span class="accent">can no longer buy a home.</span></h2>
+    <div class="row" style="margin-top:.3em">
+      <div class="grow reveal">
+        <div class="chart-wrap">
+          <div class="chart-title">House prices vs. wages, indexed to 2015 = 100</div>
+          <svg viewBox="0 0 520 230" width="100%" height="220" aria-label="prices vs wages">
+            <g stroke="#e6e1d6" stroke-width="1">
+              <line x1="46" y1="18" x2="512" y2="18"/><line x1="46" y1="88" x2="512" y2="88"/><line x1="46" y1="158" x2="512" y2="158"/>
+            </g>
+            <g fill="#94a3b8" font-size="10" font-family="Sora"><text x="10" y="22">280</text><text x="10" y="92">190</text><text x="10" y="162">100</text></g>
+            <g fill="#94a3b8" font-size="10" font-family="Sora" text-anchor="middle"><text x="46" y="178">2015</text><text x="279" y="178">2020</text><text x="512" y="178">2026</text></g>
+            <polyline class="draw" fill="none" stroke="#94a3b8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" points="46,158 162,150 279,140 395,128 512,112"/>
+            <polyline class="draw" fill="none" stroke="#2563eb" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" points="46,158 162,143 279,116 395,70 512,18"/>
+          </svg>
+          <div class="legend">
+            <span><i style="background:#2563eb"></i> House prices <strong style="color:#2563eb; margin-left:3px">+180%</strong></span>
+            <span><i style="background:#94a3b8"></i> Average wage <strong style="color:#64748b; margin-left:3px">+59%</strong></span>
+          </div>
+        </div>
+      </div>
+      <div class="col reveal" style="width:34%; gap:22px">
+        <div><div class="stat ink num" data-count="1200" data-prefix="€" data-comma="1">0</div><div class="stat-label">average take-home pay, per month</div></div>
+        <div><div class="stat ink num" data-count="350" data-prefix="€" data-suffix="k">0</div><div class="stat-label">a normal 2-bed home in Lisbon</div></div>
+        <div><div class="stat num" data-count="1000" data-prefix="€" data-comma="1">0</div><div class="stat-label">mortgage per month, for 40 years</div></div>
+      </div>
+    </div>
+    <p class="reveal" style="margin-top:1.1em; color:var(--muted); font-size:1.02rem"><em>A <strong>€1,000 mortgage on €1,200 of take-home pay</strong>, locked in for 40 years. The math simply doesn't work, so homes stop circulating.</em></p>
+    <p class="src reveal">Sources: Eurostat (Q4 2025), INE, idealista. Prices rose about 4x faster than incomes.</p>
+  </section>
+
+  <!-- 2 SOCIAL -->
+  <section class="slide dark">
+    <p class="kicker reveal">So we picked up a camera</p>
+    <h2 class="reveal" style="max-width:22ch">We filmed bold lowball offers to homeowners. <span class="accent">People couldn't stop watching.</span></h2>
+    <div class="row" style="gap:44px; align-items:flex-end">
+      <div class="grow reveal">
+        <div class="chart-wrap">
+          <div class="chart-title" style="color:rgba(255,255,255,.85)">Growth across platforms, last 90 days</div>
+          <svg viewBox="0 0 520 175" width="100%" height="168" aria-label="growth across platforms">
+            <g stroke="rgba(255,255,255,.08)" stroke-width="1"><line x1="30" y1="25" x2="512" y2="25"/><line x1="30" y1="90" x2="512" y2="90"/><line x1="30" y1="155" x2="512" y2="155"/></g>
+            <polyline class="draw" fill="none" stroke="#a78bfa" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" points="30,158 130,153 220,144 310,128 400,108 512,86"/>
+            <polyline class="draw" fill="none" stroke="#34d399" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" points="30,155 130,148 220,136 310,116 400,88 512,54"/>
+            <polyline class="draw" fill="none" stroke="#38bdf8" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" points="30,150 130,138 220,118 310,90 400,56 512,20"/>
+          </svg>
+          <div class="legend">
+            <span><i style="background:#38bdf8"></i> Views</span>
+            <span><i style="background:#34d399"></i> Followers</span>
+            <span><i style="background:#a78bfa"></i> Likes</span>
+          </div>
+        </div>
+      </div>
+      <div class="phones reveal">
+        <div class="phone"><video src="assets/reels/reel2.mp4" poster="assets/reels/reel2.jpg" autoplay muted loop playsinline></video><span class="tag">TikTok</span></div>
+        <div class="phone" style="margin-bottom:22px"><video src="assets/reels/reel4.mp4" poster="assets/reels/reel4.jpg" autoplay muted loop playsinline></video><span class="tag">Reels</span></div>
+      </div>
+    </div>
+    <div class="grid reveal" style="grid-template-columns:repeat(5,1fr); margin-top:1.4em; gap:18px">
+      <div><div class="plogos"><svg class="logo"><use href="#ic-tiktok"/></svg><svg class="logo"><use href="#ic-instagram"/></svg></div><div class="stat num" data-count="10" data-suffix="M+">0</div><div class="stat-label">organic views</div></div>
+      <div><div class="plogos"><svg class="logo"><use href="#ic-tiktok"/></svg><svg class="logo"><use href="#ic-instagram"/></svg></div><div class="stat num" data-count="43" data-suffix="K">0</div><div class="stat-label">new followers</div></div>
+      <div><div class="plogos"><svg class="logo"><use href="#ic-tiktok"/></svg><svg class="logo"><use href="#ic-instagram"/></svg></div><div class="stat num" data-count="500" data-suffix="K">0</div><div class="stat-label">likes</div></div>
+      <div><div class="plogos"><svg class="logo"><use href="#ic-x"/></svg></div><div class="stat num" data-count="1" data-suffix="M">0</div><div class="stat-label">views on X</div></div>
+      <div><div class="plogos"><svg class="logo"><use href="#ic-reddit"/></svg></div><div class="stat num" data-count="3" data-suffix="K">0</div><div class="stat-label">upvotes on Reddit</div></div>
+    </div>
+    <p class="src reveal">Rolling 90-day analytics across TikTok, Instagram, X and Reddit, 2025. 94% of views from non-followers.</p>
+  </section>
+
+  <!-- 3 EXPLORADOR.PT -->
+  <section class="slide">
+    <p class="kicker reveal">The product, explorador.pt</p>
+    <div class="row" style="gap:40px; align-items:stretch">
+      <div class="grow col reveal" style="justify-content:center">
+        <h2>Tinder for your next home,<br>the first <span class="accent">AI-native agency.</span></h2>
+        <p style="max-width:54ch; margin-bottom:1.2em">Swipe homes across Portugal, then let the AI take over. On a match it contacts <strong>both the buyer and the seller</strong>, qualifies them, answers questions, books the visit and automates the whole sale to close. No 5% broker, no exclusivity games.</p>
+        <div class="chart-wrap" style="padding:20px 22px 12px">
+          <div class="chart-title">Qualified buyers signed up</div>
+          <svg viewBox="0 0 520 130" width="100%" height="120" aria-label="signups growth">
+            <defs><linearGradient id="gb" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#2563eb" stop-opacity=".35"/><stop offset="1" stop-color="#2563eb" stop-opacity="0"/>
+            </linearGradient></defs>
+            <path class="area" fill="url(#gb)" d="M30,108 C120,104 190,96 270,78 C350,60 410,36 500,14 L500,120 L30,120 Z"/>
+            <path class="draw" fill="none" stroke="#2563eb" stroke-width="4" stroke-linecap="round" d="M30,108 C120,104 190,96 270,78 C350,60 410,36 500,14"/>
+            <g font-family="Sora" font-size="10" fill="#94a3b8" text-anchor="middle"><text x="30" y="118">month 0</text><text x="500" y="122">month 2</text></g>
+          </svg>
+          <div style="display:flex; justify-content:space-between; align-items:baseline; margin-top:4px">
+            <div><span class="stat num" data-count="5000" data-comma="1" style="font-size:2.2rem">0</span><span class="stat-label" style="display:inline; margin-left:8px">buyers in 2 months</span></div>
+            <div style="text-align:right"><span class="stat ink" style="font-size:2.2rem">€0</span><span class="stat-label" style="display:inline; margin-left:8px">on marketing</span></div>
+          </div>
+        </div>
+        <div class="card reveal" style="margin-top:18px; background:linear-gradient(90deg,rgba(37,99,235,.06),rgba(56,189,248,.05)); border-color:#dbe4f5">
+          <h3>Portugal's biggest real estate marketplace sued us.</h3>
+          <p>We took it as proof we're a threat to the old model. <strong>We didn't stop.</strong></p>
+        </div>
+      </div>
+      <div class="phones reveal" style="flex-direction:column; align-items:center; justify-content:center">
+        <div class="phone" style="width:214px; aspect-ratio:676/1482"><video src="assets/demo-tinder.mp4" poster="assets/demo-tinder.jpg" autoplay muted loop playsinline></video><span class="tag">Live app</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4 THE GAP -->
+  <section class="slide dark">
+    <p class="kicker reveal">The gap we kept hitting</p>
+    <h2 class="reveal">People want to move up.<br><span class="accent">They physically can't.</span></h2>
+    <div class="grid g3" style="margin-top:.5em">
+      <div class="card reveal"><h3>The trap</h3><p>To sign for a new home you owe the sinal, often 10 to 20%, right now. But your money is locked in the home you haven't sold yet.</p></div>
+      <div class="card reveal"><h3>The bank is too slow</h3><p>Bridge loans exist, but they are slow, buried in paperwork and often approved too late. So the deal dies.</p></div>
+      <div class="card reveal"><h3>The chain freezes</h3><p>One stuck seller blocks every buyer behind them. Properties stop circulating. That is the root of the crisis.</p></div>
+    </div>
+    <p class="reveal" style="margin-top:1.5em; font-size:1.2rem; color:#fff; font-weight:600">What if your home's equity became <span class="accent">spendable liquidity</span> in minutes?</p>
+  </section>
+
+  <!-- 5 SOLUTION -->
+  <section class="slide">
+    <p class="kicker reveal">The solution, explorador Bridge</p>
+    <h2 class="reveal">Collateralize the home you're selling. Draw the <span class="accent">sinal</span> today.</h2>
+    <div class="flow reveal">
+      <div class="step"><div class="n">01</div><h3>Sign in</h3><p>Email login gives you a Sui wallet via Privy. No seed phrase.</p></div>
+      <div class="step"><div class="n">02</div><h3>Documents + AI</h3><p>Upload the caderneta. Claude reads the tax article, VPT and owner.</p></div>
+      <div class="step"><div class="n">03</div><h3>Prove human</h3><p>World ID confirms a unique person resident in Portugal.</p></div>
+      <div class="step"><div class="n">04</div><h3>Tokenize</h3><p>House minted as HOUSE coins, supply pegged to its VPT in euros.</p></div>
+      <div class="step"><div class="n">05</div><h3>Draw eUSD</h3><p>Lock collateral, an AI agent pays out our eUSD stablecoin in one tx.</p></div>
+      <div class="step"><div class="n">06</div><h3>Repay</h3><p>When the old home sells, repay and the collateral unlocks on-chain.</p></div>
+    </div>
+    <div class="row reveal" style="margin-top:1.6em; gap:30px">
+      <p style="color:var(--muted); max-width:58ch"><em>Documents encrypted on <strong>Walrus</strong>, their hash anchored on <strong>Sui</strong>. Every step is a real, verifiable transaction.</em></p>
+      <span class="pill" style="white-space:nowrap"><span class="dot"></span> Live on Sui testnet</span>
+    </div>
+  </section>
+
+  <!-- 6 BUILD -->
+  <section class="slide dark">
+    <p class="kicker reveal">How it's built, on Sui</p>
+    <div class="row" style="gap:44px; align-items:flex-start">
+      <div class="grow reveal">
+        <h2>A real on-chain credit rail,<br>not a demo.</h2>
+        <ul class="clean" style="margin-top:.3em">
+          <li>A published <strong>Move package</strong>: a HOUSE equity coin, a shared vault, and tokenize, draw and repay with a full event trail.</li>
+          <li>Our own stablecoin <strong>eUSD</strong>, because faucets can't hand out the thousands a real sinal needs. Payouts are full value.</li>
+          <li>Every settlement is one <strong>programmable transaction</strong>. Draw and repay each run atomically.</li>
+        </ul>
+      </div>
+      <div class="reveal" style="width:38%">
+        <h3 style="margin-bottom:.7em; color:rgba(255,255,255,.7); font-size:.78rem; letter-spacing:.16em; text-transform:uppercase">The stack</h3>
+        <span class="tech"><b>Sui</b> Move + eUSD</span>
+        <span class="tech"><b>Privy</b> Sui wallet</span>
+        <span class="tech"><b>Walrus + Seal</b> docs</span>
+        <span class="tech"><b>World ID</b> human</span>
+        <span class="tech"><b>Claude</b> parsing + agent</span>
+      </div>
+    </div>
+    <p class="src reveal">Package, HOUSE coin, eUSD and every tokenize, draw and repay verified live on Sui testnet.</p>
+  </section>
+
+  <!-- 7 ARCHITECTURE -->
+  <section class="slide">
+    <p class="kicker reveal">How the system works</p>
+    <h2 class="reveal">From sign-in to repayment, <span class="accent">one flow.</span></h2>
+    <div class="pipe">
+      <div class="anode seq"><span class="b">01</span><h4>Sign in</h4><p>Email login, Sui wallet via Privy</p></div>
+      <div class="arr seq">→</div>
+      <div class="anode seq"><span class="b">02</span><h4>Upload documents</h4>
+        <div class="docs">
+          <span class="doc seq">CC identity</span>
+          <span class="doc seq">Registo Predial</span>
+          <span class="doc seq">Declaração IMI</span>
+        </div>
+      </div>
+      <div class="arr seq">→</div>
+      <div class="anode seq"><span class="b">03</span><h4>KYC</h4><p>World ID, unique human in PT</p></div>
+      <div class="arr seq">→</div>
+      <div class="anode seq"><span class="b">04</span><h4>Sign debt doc</h4><p>Legal acknowledgment, e-signed</p></div>
+      <div class="arr seq">→</div>
+      <div class="anode seq"><span class="b">05</span><h4>Tokenize</h4><p>HOUSE coins + vault</p></div>
+      <div class="arr seq">→</div>
+      <div class="anode seq"><span class="b">06</span><h4>Collateralize</h4><p>Lock equity on-chain</p></div>
+      <div class="arr seq">→</div>
+      <div class="anode seq"><span class="b">07</span><h4>Withdraw</h4><p>Receive eUSD for the sinal</p></div>
+      <div class="arr seq">→</div>
+      <div class="anode hot seq"><span class="b">08</span><h4>Repay</h4><p>After the CPCV, or any time</p></div>
+    </div>
+
+    <div class="lane">
+      <div class="svc2 seq" style="border-left-color:#2563eb"><h4>🗄️ Walrus + Seal</h4><p>Every document encrypted and stored off-chain, hash anchored on Sui.</p><div class="who">Powers steps 02 &amp; 04</div></div>
+      <div class="svc2 seq" style="border-left-color:#10b981"><h4>🌍 World ID</h4><p>Proof of a unique human, resident in Portugal, before any credit.</p><div class="who">Powers step 03</div></div>
+      <div class="svc2 seq" style="border-left-color:#6366f1"><h4>⛓️ Sui Move</h4><p>bridge::house + bridge::eusd. Mint, lock, draw and repay, all on-chain.</p><div class="who">Powers steps 05 to 08</div></div>
+      <div class="svc2 seq" style="border-left-color:#f59e0b"><h4>🏦 Treasury</h4><p>Holds the eUSD float and the collateral until the loan is repaid.</p><div class="who">Powers steps 07 &amp; 08</div></div>
+    </div>
+
+    <div class="callout seq">
+      <div class="big">0 fees</div>
+      <p>You repay only what you drew. The <strong>yield on our treasury</strong> funds the protocol, so borrowing your own equity never costs you a cent.</p>
+    </div>
+  </section>
+
+  <!-- 8 WHY -->
+  <section class="slide">
+    <p class="kicker reveal">Why it matters</p>
+    <h2 class="reveal">Unlock the equity, and the <span class="accent">whole market moves again.</span></h2>
+    <div class="grid g3" style="margin-top:.5em">
+      <div class="card reveal"><h3>For the mover</h3><p>Sign for your dream home today instead of losing it while you wait to sell.</p></div>
+      <div class="card reveal"><h3>For the market</h3><p>Every unstuck seller frees the buyers behind them. Homes circulate and the crisis eases.</p></div>
+      <div class="card reveal"><h3>For explorador</h3><p>5,000 buyers already swipe on us. Bridge turns that audience into a full property and credit platform.</p></div>
+    </div>
+    <div class="row reveal" style="margin-top:2em; justify-content:space-between; align-items:center">
+      <p class="quote" style="font-size:clamp(1.4rem,2.8vw,2rem); max-width:20ch">From swiping a home<br>to <span class="accent">funding it.</span></p>
+      <div class="brand" style="margin:0"><img src="assets/explorador-mark.png" alt="explorador" style="filter:none"><div class="wm" style="color:var(--ink)">explorador<small style="color:var(--primary)">bridge · ETHGlobal Lisbon 2026</small></div></div>
+    </div>
+  </section>
+
+  <!-- 8 THANK YOU -->
+  <section class="slide dark" style="justify-content:center">
+    <div class="row" style="gap:60px; align-items:center; justify-content:space-between">
+      <div class="col reveal">
+        <div class="brand" style="margin-bottom:1.6rem"><img src="assets/explorador-mark.png" alt="explorador"><div class="wm">explorador<small>bridge</small></div></div>
+        <h1>Thank you.</h1>
+        <p style="margin-top:1.1rem; max-width:34ch; font-size:1.2rem; color:rgba(255,255,255,.72)">Try it live. Scan the code, or open it in your browser.</p>
+        <p style="margin-top:1.4rem; font-size:1.5rem; font-weight:800; color:#fff">ethglobal.explorador.pt</p>
+        <div style="margin-top:2rem">
+          <p style="font-size:.72rem; font-weight:700; text-transform:uppercase; letter-spacing:.2em; color:var(--sky); margin-bottom:.85em">Follow us</p>
+          <div style="display:flex; gap:30px; flex-wrap:wrap; align-items:center">
+            <span class="handle"><svg class="logo"><use href="#ic-instagram"/></svg> @explorador.pt</span>
+            <span class="handle"><svg class="logo"><use href="#ic-tiktok"/></svg> @joaointech</span>
+          </div>
+        </div>
+      </div>
+      <div class="reveal qrcard">
+        <img src="assets/qr.svg" alt="Scan for ethglobal.explorador.pt">
+        <div class="url">ethglobal.explorador.pt</div>
+      </div>
+    </div>
+  </section>
+
+  <div class="nav left" id="navL"></div>
+  <div class="nav right" id="navR"></div>
+  <div class="counter"><span id="cur">1</span> / <span id="tot">8</span></div>
+  <div class="hint">← → to navigate · F fullscreen</div>
+  <div class="dots" id="dots"></div>
+
+<script>
+  const slides=[...document.querySelectorAll('.slide')];
+  const dotsWrap=document.getElementById('dots'), cur=document.getElementById('cur');
+  document.getElementById('tot').textContent=slides.length;
+  let i=0;
+  slides.forEach((_,n)=>{const b=document.createElement('button'); b.onclick=()=>go(n); dotsWrap.appendChild(b);});
+  const dots=[...dotsWrap.children];
+
+  function fmt(n,comma){ return comma ? n.toLocaleString('en-US') : String(n); }
+  function countUp(el){
+    const target=+el.dataset.count, pre=el.dataset.prefix||'', suf=el.dataset.suffix||'', comma=el.dataset.comma;
+    const dur=1000, t0=performance.now();
+    function tick(t){
+      const p=Math.min(1,(t-t0)/dur), e=1-Math.pow(1-p,3);
+      el.textContent=pre+fmt(Math.round(target*e),comma)+suf;
+      if(p<1) requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  }
+  function restart(el){ el.style.animation='none'; void el.offsetWidth; el.style.animation=''; }
+
+  function go(n){
+    i=Math.max(0,Math.min(slides.length-1,n));
+    slides.forEach((s,k)=>s.classList.toggle('active',k===i));
+    dots.forEach((d,k)=>d.classList.toggle('on',k===i));
+    cur.textContent=i+1;
+    const s=slides[i];
+    s.querySelectorAll('.reveal').forEach((el,idx)=>{restart(el); el.style.animationDelay=(idx*90)+'ms';});
+    s.querySelectorAll('.seq').forEach((el,idx)=>{restart(el); el.style.animationDelay=(300+idx*70)+'ms';});
+    s.querySelectorAll('.draw,.area,.dotpop').forEach(restart);
+    s.querySelectorAll('.num').forEach(el=>{el.textContent=(el.dataset.prefix||'')+'0'+(el.dataset.suffix||''); setTimeout(()=>countUp(el),400);});
+    slides.forEach((sl,k)=>sl.querySelectorAll('video').forEach(v=>{k===i?v.play().catch(()=>{}):v.pause();}));
+  }
+  document.getElementById('navL').onclick=()=>go(i-1);
+  document.getElementById('navR').onclick=()=>go(i+1);
+  addEventListener('keydown',e=>{
+    const k=e.key.toLowerCase();
+    if(e.key==='ArrowRight'||e.key===' '||e.key==='PageDown')go(i+1);
+    else if(e.key==='ArrowLeft'||e.key==='PageUp')go(i-1);
+    else if(e.key==='Home')go(0); else if(e.key==='End')go(slides.length-1);
+    else if(k==='f'){document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen();}
+  });
+  go(0);
+</script>
+</body>
+</html>

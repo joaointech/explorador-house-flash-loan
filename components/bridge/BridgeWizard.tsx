@@ -83,6 +83,10 @@ export default function BridgeWizard({ lang }: { lang: Locale }) {
     setStep((s) => Math.min(s + 1, steps.length - 1));
   };
   const back = () => setStep((s) => Math.max(s - 1, 0));
+  // Jump straight to an already-completed step (from the rail) to re-check or edit.
+  const goTo = (i: number) => {
+    if (i !== step && done.has(i)) setStep(i);
+  };
 
   const props: StepProps = { lang, session, patch, next, back, canBack: step > 0 };
 
@@ -100,7 +104,7 @@ export default function BridgeWizard({ lang }: { lang: Locale }) {
   return (
     <div className="mx-auto grid max-w-5xl gap-8 px-4 py-10 lg:grid-cols-[16rem_1fr] lg:py-14">
       <aside className="lg:sticky lg:top-24 lg:self-start">
-        <Stepper steps={steps} current={step} done={done} />
+        <Stepper steps={steps} current={step} done={done} onSelect={goTo} />
       </aside>
       <section className="min-w-0">{body}</section>
     </div>

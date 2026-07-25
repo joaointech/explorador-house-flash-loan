@@ -18,6 +18,9 @@ export default function StepSign({ lang, session, patch, next, back, canBack }: 
   const alreadySigned = session.agreement && session.disbursement?.status === "executed";
   const [screen, setScreen] = useState<Screen>(alreadySigned ? "result" : "document");
   const [accepted, setAccepted] = useState(false);
+  // Debtor name: pre-filled from the parsed caderneta, editable — the AI may not
+  // extract it, and it's printed on the debt acknowledgement, so we require it.
+  const [nome, setNome] = useState(session.property?.proprietario ?? "");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [otp, setOtp] = useState("");
@@ -35,6 +38,8 @@ export default function StepSign({ lang, session, patch, next, back, canBack }: 
         sub: "Before any liquidity moves, you formally acknowledge the debt — a Termo de Reconhecimento e Confissão de Dívida under article 458 of the Civil Code — and sign it with Chave Móvel Digital.",
         openDoc: "Open in a new tab", data: "Your details",
         debtor: "Debtor", property: "Property", debt: "Debt", wallet: "Wallet", date: "Date",
+        nameLabel: "Debtor legal name", namePlaceholder: "Full name as on your ID",
+        nameNote: "This name is printed on the debt acknowledgement — confirm or correct it.",
         accept: "I have read and accept the terms of this document.",
         sign: "Sign with Chave Móvel Digital", back: "Back",
         cmdTitle: "Chave Móvel Digital", demo: "DEMO",
@@ -53,6 +58,8 @@ export default function StepSign({ lang, session, patch, next, back, canBack }: 
         sub: "Antes de qualquer liquidez ser transferida, reconhece formalmente a dívida — um Termo de Reconhecimento e Confissão de Dívida nos termos do artigo 458.º do Código Civil — e assina-o com a Chave Móvel Digital.",
         openDoc: "Abrir numa nova aba", data: "Os seus dados",
         debtor: "Devedor", property: "Imóvel", debt: "Dívida", wallet: "Carteira", date: "Data",
+        nameLabel: "Nome legal do devedor", namePlaceholder: "Nome completo como no documento",
+        nameNote: "Este nome consta no termo de dívida — confirme ou corrija.",
         accept: "Li e aceito os termos deste documento.",
         sign: "Assinar com Chave Móvel Digital", back: "Voltar",
         cmdTitle: "Chave Móvel Digital", demo: "DEMO",
@@ -95,7 +102,7 @@ export default function StepSign({ lang, session, patch, next, back, canBack }: 
           amountEur: drawAmount,
           article: session.property?.artigoMatricial,
           morada: session.property?.morada,
-          nome: session.property?.proprietario ?? "",
+          nome: nome.trim(),
           phone,
         }),
       });
@@ -194,11 +201,15 @@ export default function StepSign({ lang, session, patch, next, back, canBack }: 
                 </a>
                 <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">{t.data}</p>
                 <div className="space-y-2">
-                  <ProofRow label={t.debtor} value={session.property?.proprietario ?? "—"} mono={false} />
+                  <ProofRow label={t.debtor} value={nome || "—"} mono={false} />
                   <ProofRow label={t.property} value={session.property?.morada ?? "—"} mono={false} />
                   <ProofRow label={t.debt} value={`€${fmt(drawAmount)}`} mono={false} />
                   <ProofRow label={t.wallet} value={short(session.accountId ?? "—")} />
                   <ProofRow label={t.date} value={today} mono={false} />
+                </div>
+                <div className="pt-1">
+                  <Field label={t.nameLabel} value={nome} onChange={setNome} placeholder={t.namePlaceholder} />
+                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{t.nameNote}</p>
                 </div>
               </div>
             </div>
@@ -207,7 +218,7 @@ export default function StepSign({ lang, session, patch, next, back, canBack }: 
               {t.accept}
             </label>
             <div className="flex items-center gap-3">
-              <PrimaryButton onClick={() => setScreen("cmd-phone")} disabled={!accepted}>🔐 {t.sign}</PrimaryButton>
+              <PrimaryButton onClick={() => setScreen("cmd-phone")} disabled={!accepted || !nome.trim()}>🔐 {t.sign}</PrimaryButton>
               {canBack && <SecondaryButton onClick={back}>← {t.back}</SecondaryButton>}
             </div>
             {error && <p className="text-sm text-[var(--color-danger)]">{error}</p>}

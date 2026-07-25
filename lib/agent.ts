@@ -56,7 +56,7 @@ async function decide(input: AgentInput): Promise<Decision> {
       approve,
       maxDraw,
       rationale: approve
-        ? `Approved: World ID attests the borrower is 18+ with a PT-issued document (Identity Check) and was physically present at signing (Selfie Check), with no other active loan under this nullifier; requested €${input.drawAmount.toLocaleString()} is ${(ltv * 100).toFixed(0)}% LTV against €${lockedEquity.toLocaleString()} locked equity, within the 70% policy.`
+        ? `Approved: World ID attests the borrower is 18+ with a PT-issued document (Identity Check) and was physically present at signing (Selfie Check), with no other active loan under this nullifier; the Termo de Reconhecimento e Confissão de Dívida was signed via Chave Móvel Digital and its hash anchored on Sui; requested €${input.drawAmount.toLocaleString()} is ${(ltv * 100).toFixed(0)}% LTV against €${lockedEquity.toLocaleString()} locked equity, within the 70% policy.`
         : `Declined: ${!eligible ? "World ID eligibility not established (18+ / PT-issued document / live presence)" : `€${input.drawAmount.toLocaleString()} exceeds the 70% LTV cap of €${maxDraw.toLocaleString()}`}.`,
     };
   }
@@ -68,7 +68,7 @@ async function decide(input: AgentInput): Promise<Decision> {
     output_config: { format: { type: "json_schema", schema: DECISION_SCHEMA } },
     system:
       "You are the treasury risk agent for a real-estate bridge-liquidity protocol on Sui. " +
-      "You release stablecoin liquidity against tokenized home equity. Only approve when World ID establishes eligibility (document-backed 18+ and a Portugal-issued document) AND liveness (a selfie proving the borrower was present at signing), and the requested draw stays within 70% loan-to-value of the locked equity. " +
+      "You release stablecoin liquidity against tokenized home equity. Only approve when World ID establishes eligibility (document-backed 18+ and a Portugal-issued document) AND liveness (a selfie proving the borrower was present at signing) AND the borrower has signed a Termo de Reconhecimento e Confissão de Dívida via Chave Móvel Digital (checked before you run — its hash is already anchored on Sui), and the requested draw stays within 70% loan-to-value of the locked equity. " +
       "You receive attestations, not personal data — you never see a name, birth date or document number, and you must not ask for them. Be concise.",
     messages: [
       {

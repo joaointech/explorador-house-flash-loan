@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { runTreasuryAgent } from "@/lib/agent";
 import { recordLoan, getLoan } from "@/lib/loans";
 import { getKycSession, isComplete, nullifierHasActiveLoan, checkContinuity } from "@/lib/kyc-store";
+import { getAgreementForVault } from "@/lib/agreement";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -35,6 +36,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "kyc_sybil" }, { status: 400 });
     }
 
+    // Legal gate: no signed Termo de Reconhecimento e Confissão de Dívida, no funds.
+    // The signature must match this vault, this borrower, and this exact draw — a
+    // signed €X does not authorize a €2X disbursement.
+    const agreement = await getAgreementForVault(vaultId);
+    if (!agreement) return NextResponse.json({ error: "agreement_required" }, { status: 403 });
+    if (agreement.accountId !== accountId || agreement.amountEur !== Number(body.drawAmount)) {
+      return NextResponse.json({ error: "agreement_mismatch" }, { status: 403 });
+    }
+
     const result = await runTreasuryAgent({
       vpt: Number(body.vpt) || 0,
       collateralPct: Number(body.collateralPct) || 0,
@@ -56,6 +66,8 @@ export async function POST(req: NextRequest) {
         collateralPct: Number(body.collateralPct) || 0,
         coinType: String(body.coinType ?? ""),
         disburseDigest: result.digest,
+        agreementId: agreement.id,
+        agreementSha256: agreement.docSha256,
         selfieNullifier: kyc.selfieNullifier,
         identityNullifier: kyc.identityNullifier,
         status: "active",

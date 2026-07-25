@@ -34,3 +34,4 @@ sui/build/
 # loan registry + World ID session store (server-side demo stores)
 .loans.json
 .kyc.json
+.agreements.json

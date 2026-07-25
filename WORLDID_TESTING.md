@@ -257,8 +257,39 @@ Recorded here because they're testable claims, not post-hoc rationalization:
 4. Record against the checkpoint table. Do not help before checkpoint 8.
 5. Ask the comprehension probe **before** explaining anything.
 
-`WORLD_SANDBOX=1` bypasses real proofs for UI-only runs. It renders a loud amber
+`NEXT_PUBLIC_WORLD_SANDBOX=1` bypasses real proofs for UI-only runs. It renders a loud amber
 `SANDBOX — not a real proof` badge; any screenshot showing that badge is not test evidence.
+
+### 4.5 Testing without a World ID
+
+For local dev with no phone, no World App, and no Developer Portal credentials at all,
+set:
+
+```
+NEXT_PUBLIC_WORLD_SANDBOX=1
+```
+
+and run `npm run dev`. Step 3 of the wizard and Repay on `/loans` both complete on a single
+click — no QR code is shown, because `StepKyc.tsx` and `LoansView.tsx` skip mounting
+`IDKitRequestWidget` entirely and post a dummy proof straight to `/api/worldid/verify`,
+which fakes verification the same way (`lib/worldid.ts`).
+
+What this fakes: rp_context signing and Developer Portal verification. What it does
+**not** fake: any gate the app itself enforces — `isComplete()`, the sybil check, the
+disbursement agent, the signed termo (see the disburse route) all still run for real
+against the fake session.
+
+One consequence to know about: the sandbox nullifiers are fixed constants
+(`0xsandbox-identity` / `0xsandbox-selfie`), so every sandbox run is the *same* human.
+A second loan attempt is correctly rejected `kyc_sybil` — that's the sybil gate working,
+not a bug. Reset between happy-path runs with:
+
+```
+rm .loans.json .kyc.json
+```
+
+This bypass is env-driven with no production guard, so a deployed demo can use it too —
+which also means it must never be set on a deployment holding real funds.
 
 ---
 

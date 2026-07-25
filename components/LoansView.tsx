@@ -6,7 +6,7 @@ import { IDKitRequestWidget, selfieCheckLegacy, IDKitErrorCodes } from "@worldco
 import { useWallet } from "@/components/WalletProvider";
 import type { Locale } from "@/lib/i18n";
 import { suiscanTx, suiscanObject, suiscanCoin, onChain, WORLD_ACTIONS } from "@/lib/types";
-import { fetchRpContext, submitProof, type RpContext } from "@/lib/worldid-client";
+import { fetchRpContext, submitProof, SANDBOX, type RpContext } from "@/lib/worldid-client";
 
 const APP_ID = (process.env.NEXT_PUBLIC_WORLD_APP_ID || "app_") as `app_${string}`;
 
@@ -88,6 +88,11 @@ export default function LoansView({ lang }: { lang: Locale }) {
   const startRepay = async (vaultId: string) => {
     setGateError(null);
     setRepaying(vaultId);
+    // Dev bypass: no widget, no phone — same dummy proof the server fakes.
+    if (SANDBOX) {
+      await finishRepay(vaultId, {});
+      return;
+    }
     try {
       setGateCtx(await fetchRpContext("selfie"));
       setGateVault(vaultId);
@@ -223,6 +228,7 @@ export default function LoansView({ lang }: { lang: Locale }) {
           app_id={APP_ID}
           action={WORLD_ACTIONS.selfie}
           rp_context={gateCtx}
+          environment="staging"
           allow_legacy_proofs
           require_user_presence
           language="en"

@@ -41,7 +41,19 @@ export const IDENTITY_ATTRIBUTES = [
 ] as const;
 
 /**
- * What the client holds after World ID verification. `token` is an opaque lookup
+ * What the client holds after Identity Check alone — the first of the two World ID
+ * steps. Threaded (by `token`) into the second step, which folds Selfie Check into the
+ * same server-side session and returns the full `KycResult`.
+ */
+export type IdentityResult = {
+  token: string;
+  identityAttested: boolean;
+  identityNullifier: string;
+  sandbox?: boolean;
+};
+
+/**
+ * What the client holds after both World ID checks. `token` is an opaque lookup
  * key for a server-side session — never a claim the client can forge. The nullifiers
  * are display-only; the server reads its own copy when money moves.
  */
@@ -71,15 +83,31 @@ export type Disbursement = {
   agentRationale: string; // why the agent released funds
 };
 
+/**
+ * The borrower's signed Termo de Reconhecimento e Confissão de Dívida (art. 458.º
+ * Código Civil). Client-safe subset of `SignedAgreement` in lib/agreement.ts — no
+ * raw phone number, no server-only fields.
+ */
+export type AgreementSignature = {
+  id: string;
+  docSha256: string;
+  signedAt: number;
+  amountEur: number;
+  signerNome: string;
+  anchorDigest?: string;
+};
+
 /** The full in-progress bridge session held client-side across the wizard. */
 export type BridgeSession = {
   accountId?: string; // Sui address (0x…)
   property?: PropertyData;
   storage?: StorageResult;
+  identity?: IdentityResult;
   kyc?: KycResult;
   token?: HouseToken;
   collateralPct?: number; // fraction of equity locked
   drawAmount?: number; // requested USDC
+  agreement?: AgreementSignature;
   disbursement?: Disbursement;
 };
 

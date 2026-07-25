@@ -6,9 +6,11 @@ import type { BridgeSession } from "@/lib/types";
 import Stepper, { type StepMeta } from "./Stepper";
 import StepConnect from "./steps/StepConnect";
 import StepDocuments from "./steps/StepDocuments";
-import StepKyc from "./steps/StepKyc";
+import StepIdentity from "./steps/StepIdentity";
+import StepSelfie from "./steps/StepSelfie";
 import StepTokenize from "./steps/StepTokenize";
 import StepCollateralize from "./steps/StepCollateralize";
+import StepSign from "./steps/StepSign";
 import StepWithdraw from "./steps/StepWithdraw";
 
 export type StepProps = {
@@ -21,8 +23,8 @@ export type StepProps = {
 };
 
 const STEP_LABELS: Record<Locale, string[]> = {
-  pt: ["Ligar carteira", "Documentos", "KYC World ID", "Tokenizar", "Colateralizar", "Levantar"],
-  en: ["Connect wallet", "Documents", "World ID KYC", "Tokenize", "Collateralize", "Withdraw"],
+  pt: ["Ligar carteira", "Documentos", "Identity Check", "Selfie Check", "Tokenizar", "Colateralizar", "Assinar termo", "Levantar"],
+  en: ["Connect wallet", "Documents", "Identity Check", "Selfie Check", "Tokenize", "Collateralize", "Sign debt acknowledgement", "Withdraw"],
 };
 
 export default function BridgeWizard({ lang }: { lang: Locale }) {
@@ -56,9 +58,11 @@ export default function BridgeWizard({ lang }: { lang: Locale }) {
   const body = [
     <StepConnect key="c" {...props} />,
     <StepDocuments key="d" {...props} />,
-    <StepKyc key="k" {...props} />,
+    <StepIdentity key="i" {...props} />,
+    <StepSelfie key="sf" {...props} />,
     <StepTokenize key="t" {...props} />,
     <StepCollateralize key="co" {...props} />,
+    <StepSign key="s" {...props} />,
     <StepWithdraw key="w" {...props} />,
   ][step];
 

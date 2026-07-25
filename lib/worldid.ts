@@ -24,8 +24,13 @@ const RP_ID = process.env.WORLD_RP_ID || "";
 const SIGNING_KEY = process.env.WORLD_RP_SIGNING_KEY || "";
 const VERIFY_URL = "https://developer.world.org/api/v4/verify";
 
-/** Escape hatch for a dead conference wifi. Renders a loud SANDBOX badge in the UI. */
-export const SANDBOX = process.env.WORLD_SANDBOX === "1";
+/**
+ * Escape hatch for a dead conference wifi — and for local dev with no World ID at all.
+ * Renders a loud SANDBOX badge in the UI. Either variable turns it on, so setting only
+ * the NEXT_PUBLIC_ one (which the browser also needs, see lib/worldid-client.ts) is enough.
+ */
+export const SANDBOX =
+  process.env.WORLD_SANDBOX === "1" || process.env.NEXT_PUBLIC_WORLD_SANDBOX === "1";
 
 export type RpContext = {
   rp_id: string;

@@ -8,6 +8,14 @@ import type { WorldCredential, KycResult } from "./types";
 
 export type RpContext = { rp_id: string; nonce: string; created_at: number; expires_at: number; signature: string };
 
+/**
+ * Dev bypass: skip the IDKit widget entirely and post a dummy proof straight to
+ * /api/worldid/verify, which fakes the same way server-side (lib/worldid.ts SANDBOX).
+ * Without this the browser still mounts a QR code that no World App can complete,
+ * because the sandboxed rp_context isn't a real signature.
+ */
+export const SANDBOX = process.env.NEXT_PUBLIC_WORLD_SANDBOX === "1";
+
 /** Gets a freshly-signed rp_context. One signature covers one action, so never cache this. */
 export async function fetchRpContext(credential: WorldCredential): Promise<RpContext> {
   const res = await fetch("/api/worldid/rp-context", {

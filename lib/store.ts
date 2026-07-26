@@ -23,7 +23,9 @@ let _db: any = null;
 async function db() {
   if (!_db) {
     const { Firestore } = await import("@google-cloud/firestore");
-    _db = new Firestore(); // project + creds from ADC (auto on Cloud Run)
+    // ignoreUndefinedProperties: optional fields (sandbox?, morada?, repaidUsdc?…)
+    // arrive as `undefined`, which Firestore rejects unless told to skip them.
+    _db = new Firestore({ ignoreUndefinedProperties: true }); // creds from ADC (auto on Cloud Run)
   }
   return _db;
 }

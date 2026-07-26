@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyIdKitResult } from "@/lib/worldid";
+import { verifyIdKitResult, skipProof, ALLOW_SKIP } from "@/lib/worldid";
 import { upsertKycSession, isComplete } from "@/lib/kyc-store";
 import type { WorldCredential } from "@/lib/types";
 
@@ -18,13 +18,18 @@ export async function POST(req: NextRequest) {
       credential?: WorldCredential;
       result?: unknown;
       token?: string;
+      skip?: boolean;
     };
 
     if (body.credential !== "identity" && body.credential !== "selfie") {
       return NextResponse.json({ error: "unknown_credential" }, { status: 400 });
     }
 
-    const proof = await verifyIdKitResult(body.result, body.credential);
+    // "Skip (demo)" button: only honoured when the skip flag is enabled.
+    if (body.skip) {
+      if (!ALLOW_SKIP) return NextResponse.json({ error: "skip_not_allowed" }, { status: 403 });
+    }
+    const proof = body.skip ? skipProof(body.credential) : await verifyIdKitResult(body.result, body.credential);
 
     const session = await upsertKycSession(
       body.token,

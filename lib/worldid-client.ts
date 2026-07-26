@@ -16,6 +16,9 @@ export type RpContext = { rp_id: string; nonce: string; created_at: number; expi
  */
 export const SANDBOX = process.env.NEXT_PUBLIC_WORLD_SANDBOX === "1";
 
+/** Shows the "Skip (demo)" button on the World ID steps. Server enforces the same flag. */
+export const ALLOW_SKIP = SANDBOX || process.env.NEXT_PUBLIC_WORLD_ALLOW_SKIP === "1";
+
 /** Gets a freshly-signed rp_context. One signature covers one action, so never cache this. */
 export async function fetchRpContext(credential: WorldCredential): Promise<RpContext> {
   const res = await fetch("/api/worldid/rp-context", {
@@ -33,11 +36,12 @@ export async function submitProof(
   credential: WorldCredential,
   result: unknown,
   token?: string,
+  skip = false,
 ): Promise<KycResult & { complete: boolean }> {
   const res = await fetch("/api/worldid/verify", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ credential, result, token }),
+    body: JSON.stringify({ credential, result, token, skip }),
   });
   const json = await res.json();
   if (!res.ok) throw new Error(json.error ?? "verify_failed");

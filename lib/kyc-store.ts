@@ -111,6 +111,10 @@ export async function checkContinuity(token: string, vaultId: string): Promise<C
   const session = await getKycSession(token);
   if (!session?.selfieNullifier) return { ok: false, error: "kyc_required" };
 
+  // Skip/sandbox sessions mint a fresh nullifier each time, so they can't match a
+  // prior binding — accept them for the demo (they're gated by the skip flag).
+  if (session.sandbox) return { ok: true, session };
+
   const loan = await getLoan(vaultId);
   // ponytail: loans recorded before nullifier binding existed have nothing to match
   // against. The registry is seeded fresh, so in practice this is the first-draw case.

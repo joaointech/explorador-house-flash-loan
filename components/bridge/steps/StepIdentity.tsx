@@ -5,7 +5,7 @@ import { IDKitRequestWidget, identityCheck, IDKitErrorCodes } from "@worldcoin/i
 import type { StepProps } from "../BridgeWizard";
 import type { IdentityResult } from "@/lib/types";
 import { WORLD_ACTIONS, IDENTITY_ATTRIBUTES } from "@/lib/types";
-import { fetchRpContext, submitProof, SANDBOX, type RpContext } from "@/lib/worldid-client";
+import { fetchRpContext, submitProof, SANDBOX, ALLOW_SKIP, type RpContext } from "@/lib/worldid-client";
 import { StepHeading, Card, PrimaryButton, SecondaryButton, Badge, Spinner } from "../ui";
 
 const APP_ID = (process.env.NEXT_PUBLIC_WORLD_APP_ID || "app_") as `app_${string}`;
@@ -88,6 +88,23 @@ export default function StepIdentity({ lang, session, patch, next, back, canBack
     patch({ identity: next });
   };
 
+  // Demo-only: skip World ID with a unique fake nullifier (gated by the skip flag).
+  const skip = async () => {
+    setLoading(true); setError(null);
+    try {
+      const json = await submitProof("identity", {}, undefined, true);
+      const result: IdentityResult = {
+        token: json.token, identityAttested: json.identityAttested, identityNullifier: json.identityNullifier, sandbox: json.sandbox,
+      };
+      setIdentity(result);
+      patch({ identity: result });
+    } catch {
+      setError(t.err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const fail = (code: IDKitErrorCodes) => {
     setError(errorCopy[code] ?? t.err);
     setOpen(false);
@@ -125,6 +142,7 @@ export default function StepIdentity({ lang, session, patch, next, back, canBack
                 )}
               </PrimaryButton>
               {canBack && <SecondaryButton onClick={back}>← {t.back}</SecondaryButton>}
+              {ALLOW_SKIP && <SecondaryButton onClick={skip}>{en ? "Skip (demo)" : "Saltar (demo)"}</SecondaryButton>}
             </div>
             {error && <p className="text-sm text-[var(--color-danger)]">{error}</p>}
           </div>

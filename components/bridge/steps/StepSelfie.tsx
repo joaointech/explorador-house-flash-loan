@@ -5,6 +5,7 @@ import { WORLD_ACTIONS } from "@/lib/types";
 import {
   fetchRpContext,
   SANDBOX,
+  ALLOW_SKIP,
   submitProof,
   type RpContext,
 } from "@/lib/worldid-client";
@@ -143,6 +144,27 @@ export default function StepSelfie({
     patch({ kyc: next });
   };
 
+  // Demo-only: skip the selfie with a unique fake nullifier (gated by the skip flag).
+  const skip = async () => {
+    setLoading(true); setError(null);
+    try {
+      const json = await submitProof("selfie", {}, session.identity?.token, true);
+      const next: KycResult = {
+        token: json.token,
+        identityAttested: json.identityAttested,
+        identityNullifier: json.identityNullifier,
+        selfieNullifier: json.selfieNullifier,
+        sandbox: json.sandbox,
+      };
+      setKyc(next);
+      patch({ kyc: next });
+    } catch {
+      setError(t.err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const fail = (code: IDKitErrorCodes) => {
     setError(errorCopy[code] ?? t.err);
     setOpen(false);
@@ -189,6 +211,9 @@ export default function StepSelfie({
               </PrimaryButton>
               {canBack && (
                 <SecondaryButton onClick={back}>← {t.back}</SecondaryButton>
+              )}
+              {ALLOW_SKIP && (
+                <SecondaryButton onClick={skip}>{en ? "Skip (demo)" : "Saltar (demo)"}</SecondaryButton>
               )}
             </div>
             {error && (

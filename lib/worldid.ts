@@ -1,4 +1,5 @@
 import "server-only";
+import { randomBytes } from "crypto";
 import { signRequest } from "@worldcoin/idkit/signing";
 import { WORLD_ACTIONS, type WorldCredential } from "./types";
 
@@ -31,6 +32,20 @@ const VERIFY_URL = "https://developer.world.org/api/v4/verify";
  */
 export const SANDBOX =
   process.env.WORLD_SANDBOX === "1" || process.env.NEXT_PUBLIC_WORLD_SANDBOX === "1";
+
+/**
+ * Per-session "Skip (demo)" escape hatch. Unlike SANDBOX (which fakes a CONSTANT
+ * nullifier and so trips the one-loan-per-human gate on the 2nd run), a skip mints
+ * a UNIQUE random nullifier each time — a fresh "human" — so repeated demo runs
+ * don't hit kyc_sybil. Gated behind a flag so it's never silently on in prod.
+ */
+export const ALLOW_SKIP =
+  SANDBOX || process.env.WORLD_ALLOW_SKIP === "1" || process.env.NEXT_PUBLIC_WORLD_ALLOW_SKIP === "1";
+
+export function skipProof(credential: WorldCredential): VerifiedProof {
+  const rand = randomBytes(12).toString("hex");
+  return { nullifier: `0xskip-${credential}-${rand}`, identityAttested: true, protocolVersion: "skip", sandbox: true };
+}
 
 export type RpContext = {
   rp_id: string;

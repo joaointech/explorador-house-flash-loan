@@ -1,6 +1,5 @@
 import "server-only";
-import { promises as fs } from "fs";
-import path from "path";
+import { readCollection, writeCollection } from "./store";
 import type { StoredDoc } from "./types";
 
 /**
@@ -40,19 +39,8 @@ export type LoanEntry = {
   createdAt: number;
 };
 
-const FILE = path.join(process.cwd(), ".loans.json");
-
-async function readAll(): Promise<LoanEntry[]> {
-  try {
-    return JSON.parse(await fs.readFile(FILE, "utf8")) as LoanEntry[];
-  } catch {
-    return [];
-  }
-}
-
-async function writeAll(list: LoanEntry[]): Promise<void> {
-  await fs.writeFile(FILE, JSON.stringify(list, null, 2), "utf8");
-}
+const readAll = () => readCollection<LoanEntry>("loans");
+const writeAll = (list: LoanEntry[]) => writeCollection("loans", list);
 
 export async function recordLoan(entry: LoanEntry): Promise<void> {
   const list = await readAll();

@@ -1,8 +1,7 @@
 import "server-only";
-import { promises as fs } from "fs";
-import path from "path";
 import { randomUUID } from "crypto";
 import { listLoans, getLoan } from "./loans";
+import { readCollection, writeCollection } from "./store";
 
 /**
  * Server-side World ID session registry (JSON file, same pattern as lib/loans.ts).
@@ -25,20 +24,10 @@ export type KycSession = {
   expiresAt: number;
 };
 
-const FILE = path.join(process.cwd(), ".kyc.json");
 const TTL_MS = 30 * 60 * 1000;
 
-async function readAll(): Promise<KycSession[]> {
-  try {
-    return JSON.parse(await fs.readFile(FILE, "utf8")) as KycSession[];
-  } catch {
-    return [];
-  }
-}
-
-async function writeAll(list: KycSession[]): Promise<void> {
-  await fs.writeFile(FILE, JSON.stringify(list, null, 2), "utf8");
-}
+const readAll = () => readCollection<KycSession>("kyc");
+const writeAll = (list: KycSession[]) => writeCollection("kyc", list);
 
 /**
  * Creates a session, or folds a second credential into an existing one — the KYC step

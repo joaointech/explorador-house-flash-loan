@@ -49,16 +49,16 @@ export async function GET() {
     out.pool = { error: e instanceof Error ? e.message : "pool_check_failed" };
   }
 
-  // Can this instance write to its working dir? (the JSON "db" location)
+  // Data store: which backend, and can it round-trip a write? (the cross-instance fix)
+  const useFirestore = process.env.USE_FIRESTORE === "1";
   try {
-    const { promises: fs } = await import("fs");
-    const p = process.cwd() + "/.health-write-test";
-    await fs.writeFile(p, "ok");
-    await fs.unlink(p);
-    out.fsWritable = true;
+    const { readCollection, writeCollection } = await import("@/lib/store");
+    const stamp = new Date().toISOString();
+    await writeCollection("_healthcheck", [{ stamp }]);
+    const back = await readCollection<{ stamp: string }>("_healthcheck");
+    out.db = { backend: useFirestore ? "firestore" : "local-json (per-instance!)", roundTrip: back?.[0]?.stamp === stamp };
   } catch (e) {
-    out.fsWritable = false;
-    out.fsError = e instanceof Error ? e.message : "fs_error";
+    out.db = { backend: useFirestore ? "firestore" : "local-json", error: e instanceof Error ? e.message : "db_error" };
   }
 
   return NextResponse.json(out, { status: 200 });

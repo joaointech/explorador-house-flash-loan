@@ -3,6 +3,7 @@ import { promises as fs } from "fs";
 import path from "path";
 import { createHash, randomUUID } from "crypto";
 import { storeEncryptedDocuments } from "./walrus";
+import { readCollection, writeCollection } from "./store";
 
 /**
  * Server-side registry for signed debt-acknowledgement agreements (Termo de
@@ -30,7 +31,6 @@ export type SignedAgreement = {
   demo: true;
 };
 
-const FILE = path.join(process.cwd(), ".agreements.json");
 const DOC = path.join(process.cwd(), "public", "termo-reconhecimento-divida.pdf");
 
 let docHashPromise: Promise<string> | null = null;
@@ -63,17 +63,8 @@ export function maskPhone(phone: string): string {
   return `+351 9•• •••${digits.slice(-2)}`;
 }
 
-async function readAll(): Promise<SignedAgreement[]> {
-  try {
-    return JSON.parse(await fs.readFile(FILE, "utf8")) as SignedAgreement[];
-  } catch {
-    return [];
-  }
-}
-
-async function writeAll(list: SignedAgreement[]): Promise<void> {
-  await fs.writeFile(FILE, JSON.stringify(list, null, 2), "utf8");
-}
+const readAll = () => readCollection<SignedAgreement>("agreements");
+const writeAll = (list: SignedAgreement[]) => writeCollection("agreements", list);
 
 export async function signAgreement(
   params: Omit<SignedAgreement, "id" | "signedAt" | "docSha256" | "termoBlobId" | "method" | "demo">,

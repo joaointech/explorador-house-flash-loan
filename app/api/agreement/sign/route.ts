@@ -47,6 +47,7 @@ export async function POST(req: NextRequest) {
       },
     });
   } catch (e: unknown) {
+    console.error("[agreement/sign] failed:", e); // shows in Cloud Run logs
     const msg = e instanceof Error ? e.message : "sign_failed";
     return NextResponse.json({ error: msg }, { status: 500 });
   }

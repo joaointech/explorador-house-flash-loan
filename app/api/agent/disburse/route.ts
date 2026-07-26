@@ -93,6 +93,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ disbursement: result });
   } catch (e: unknown) {
+    console.error("[agent/disburse] failed:", e); // shows in Cloud Run logs
     const msg = e instanceof Error ? e.message : "disburse_failed";
     return NextResponse.json({ error: msg }, { status: 500 });
   }

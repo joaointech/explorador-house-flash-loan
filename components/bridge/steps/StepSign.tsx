@@ -106,8 +106,8 @@ export default function StepSign({ lang, session, patch, next, back, canBack }: 
           phone,
         }),
       });
-      const signJson = await signRes.json();
-      if (!signRes.ok) throw new Error(signJson.error ?? "sign_failed");
+      const signJson = await signRes.json().catch(() => ({}));
+      if (!signRes.ok) throw new Error(`sign[${signRes.status}]: ${signJson.error ?? "sign_failed"}`);
       setAgreement(signJson.agreement);
       patch({ agreement: signJson.agreement });
 
@@ -122,13 +122,14 @@ export default function StepSign({ lang, session, patch, next, back, canBack }: 
           docAnchorDigest: session.storage?.anchorDigest,
         }),
       });
-      const disburseJson = await disburseRes.json();
-      if (!disburseRes.ok) throw new Error(disburseJson.error ?? "disburse_failed");
+      const disburseJson = await disburseRes.json().catch(() => ({}));
+      if (!disburseRes.ok) throw new Error(`disburse[${disburseRes.status}]: ${disburseJson.error ?? "disburse_failed"}`);
       setResult(disburseJson.disbursement);
       patch({ disbursement: disburseJson.disbursement });
       setScreen("result");
-    } catch {
-      setError(t.err);
+    } catch (e) {
+      // Surface the real server reason on-screen (no DevTools needed).
+      setError(e instanceof Error ? e.message : t.err);
       setScreen("document");
     }
   };
@@ -170,7 +171,7 @@ export default function StepSign({ lang, session, patch, next, back, canBack }: 
           <CmdScreen title={t.cmdTitle} note={t.noSms}>
             <Field label={t.phoneLabel} value={phone} onChange={setPhone} placeholder="912 345 678" />
             <Field label={t.passwordLabel} value={password} onChange={setPassword} type="password" />
-            {error && <p className="text-sm text-[var(--color-danger)]">{error}</p>}
+            {error && <p className="mt-1 whitespace-pre-wrap break-words text-sm text-[var(--color-danger)]">{error}</p>}
             <div className="flex items-center gap-3 pt-1">
               <PrimaryButton onClick={submitPhone}>{t.authenticate}</PrimaryButton>
               <SecondaryButton onClick={() => setScreen("document")}>{t.back}</SecondaryButton>
@@ -183,7 +184,7 @@ export default function StepSign({ lang, session, patch, next, back, canBack }: 
         ) : screen === "cmd-otp" ? (
           <CmdScreen title={t.otpTitle} note={t.otpNote}>
             <Field label={t.otpLabel} value={otp} onChange={setOtp} placeholder="0000" maxLength={4} />
-            {error && <p className="text-sm text-[var(--color-danger)]">{error}</p>}
+            {error && <p className="mt-1 whitespace-pre-wrap break-words text-sm text-[var(--color-danger)]">{error}</p>}
             <div className="flex items-center gap-3 pt-1">
               <PrimaryButton onClick={submitOtp}>{t.signDoc}</PrimaryButton>
               <SecondaryButton onClick={() => setScreen("cmd-phone")}>{t.back}</SecondaryButton>
@@ -221,7 +222,7 @@ export default function StepSign({ lang, session, patch, next, back, canBack }: 
               <PrimaryButton onClick={() => setScreen("cmd-phone")} disabled={!accepted || !nome.trim()}>🔐 {t.sign}</PrimaryButton>
               {canBack && <SecondaryButton onClick={back}>← {t.back}</SecondaryButton>}
             </div>
-            {error && <p className="text-sm text-[var(--color-danger)]">{error}</p>}
+            {error && <p className="mt-1 whitespace-pre-wrap break-words text-sm text-[var(--color-danger)]">{error}</p>}
           </div>
         )}
       </Card>

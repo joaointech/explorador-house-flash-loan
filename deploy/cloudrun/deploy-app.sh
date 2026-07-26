@@ -23,7 +23,10 @@ get_env() { grep -E "^$1=" "$ENV_FILE" 2>/dev/null | head -1 | cut -d= -f2- || t
 # NEXT_PUBLIC_* must be baked into the client bundle at build time.
 PRIVY_APP_ID="$(get_env NEXT_PUBLIC_PRIVY_APP_ID)"
 WORLD_APP_ID="$(get_env NEXT_PUBLIC_WORLD_APP_ID)"
-WORLD_ACTION="$(get_env NEXT_PUBLIC_WORLD_ACTION)"
+WORLD_ACTION_IDENTITY="$(get_env NEXT_PUBLIC_WORLD_ACTION_IDENTITY)"
+WORLD_ACTION_SELFIE="$(get_env NEXT_PUBLIC_WORLD_ACTION_SELFIE)"
+WORLD_ALLOW_SKIP="$(get_env NEXT_PUBLIC_WORLD_ALLOW_SKIP)"
+WORLD_SANDBOX="$(get_env NEXT_PUBLIC_WORLD_SANDBOX)"
 
 SHA="$(git rev-parse --short HEAD)"
 IMAGE="${REGISTRY}/image:${SHA}"
@@ -36,7 +39,10 @@ docker buildx build \
   -f Dockerfile \
   --build-arg NEXT_PUBLIC_PRIVY_APP_ID="$PRIVY_APP_ID" \
   --build-arg NEXT_PUBLIC_WORLD_APP_ID="$WORLD_APP_ID" \
-  --build-arg NEXT_PUBLIC_WORLD_ACTION="$WORLD_ACTION" \
+  --build-arg NEXT_PUBLIC_WORLD_ACTION_IDENTITY="$WORLD_ACTION_IDENTITY" \
+  --build-arg NEXT_PUBLIC_WORLD_ACTION_SELFIE="$WORLD_ACTION_SELFIE" \
+  --build-arg NEXT_PUBLIC_WORLD_ALLOW_SKIP="$WORLD_ALLOW_SKIP" \
+  --build-arg NEXT_PUBLIC_WORLD_SANDBOX="$WORLD_SANDBOX" \
   -t "$IMAGE" \
   --push \
   .

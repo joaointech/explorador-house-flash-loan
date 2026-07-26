@@ -74,7 +74,7 @@ export default function DashboardView({ lang }: { lang: Locale }) {
         title: "Your account", empty: "No active position yet.", start: "Start the loan",
         loaned: "Loaned", outstanding: "Outstanding", owed: "Owed now", paidBack: "Paid back", apr: "Borrow APR",
         houseTitle: "HOUSE tokens", minted: "Total minted", inVault: "In the collateral vault", inWalletL: "In your wallet",
-        collateralPledged: "locked as collateral", releaseNote: "The rest is already in your wallet; repaying in full releases the collateral too.", peg: "1 HOUSE = €1 of VPT.",
+        collateralPledged: "locked as collateral", releaseNote: "The rest is already in your wallet; each repayment releases locked collateral proportionally, and a full payoff burns whatever remains instead of releasing it.", peg: "1 HOUSE = €1 of VPT.",
         docsTitle: "Documents", anchor: "Doc hash (Sui)", vault: "Collateral vault", pay: "Disbursement (Sui tx)", repayTx: "Repayment (Sui tx)",
         property: "Property", vpt: "VPT value",
       }
@@ -82,7 +82,7 @@ export default function DashboardView({ lang }: { lang: Locale }) {
         title: "A sua conta", empty: "Ainda não há posição ativa.", start: "Iniciar o empréstimo",
         loaned: "Emprestado", outstanding: "Em dívida (capital)", owed: "Em dívida agora", paidBack: "Reembolsado", apr: "TAN",
         houseTitle: "Tokens HOUSE", minted: "Total emitido", inVault: "No vault de garantia", inWalletL: "Na sua carteira",
-        collateralPledged: "bloqueados como garantia", releaseNote: "O restante já está na sua carteira; reembolsar na totalidade liberta também a garantia.", peg: "1 HOUSE = €1 de VPT.",
+        collateralPledged: "bloqueados como garantia", releaseNote: "O restante já está na sua carteira; cada reembolso liberta garantia bloqueada proporcionalmente, e a liquidação total queima o que resta em vez de o libertar.", peg: "1 HOUSE = €1 de VPT.",
         docsTitle: "Documentos", anchor: "Hash do doc (Sui)", vault: "Vault de garantia", pay: "Pagamento (Transação Sui)", repayTx: "Reembolso (Transação Sui)",
         property: "Imóvel", vpt: "Valor VPT",
       };
@@ -127,9 +127,10 @@ export default function DashboardView({ lang }: { lang: Locale }) {
   const outstanding = loan.live?.drawnUsdc ?? loan.drawnUsdc;
   const owedNow = loan.live?.owedUsdc ?? outstanding;
   const locked = loan.live?.locked ?? 0;
-  // What the borrower actually holds on-chain right now. All the HOUSE equity
-  // stays in the collateral vault until the loan is repaid in full, at which
-  // point the whole supply is released to the wallet — so until then this is 0.
+  // What the borrower actually holds on-chain right now. Locked HOUSE equity
+  // is released to the wallet proportionally as principal is repaid; whatever
+  // remains locked at full payoff is burned instead of released, so this view
+  // (active loans only) never needs to show a post-burn state.
   const inWallet = loan.live?.houseBalance ?? 0;
   const inVault = Math.max(0, loan.vpt - inWallet);
 

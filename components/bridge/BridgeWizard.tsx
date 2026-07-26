@@ -25,8 +25,8 @@ export type StepProps = {
 };
 
 const STEP_LABELS: Record<Locale, string[]> = {
-  pt: ["Ligar carteira", "Documentos", "Identity Check", "Selfie Check", "Tokenizar", "Colateralizar", "Assinar termo", "Levantar"],
-  en: ["Connect wallet", "Documents", "Identity Check", "Selfie Check", "Tokenize", "Collateralize", "Sign debt acknowledgement", "Withdraw"],
+  pt: ["Ligar carteira", "Documentos", "Identity Check", "KYC", "Tokenizar", "Colateralizar", "Assinar termo", "Levantar"],
+  en: ["Connect wallet", "Documents", "Identity Check", "KYC", "Tokenize", "Collateralize", "Sign debt acknowledgement", "Withdraw"],
 };
 
 export default function BridgeWizard({ lang }: { lang: Locale }) {

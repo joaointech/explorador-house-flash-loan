@@ -30,14 +30,14 @@ export default function TreasuryView({ lang }: { lang: Locale }) {
   const pct = (bps: number) => `${(bps / 100).toFixed(2)}%`;
 
   const t = en
-    ? { title: "Treasury", sub: "The protocol treasury wallet on Sui — it holds the lending pool, mints eUSD for disbursements, and receives repayments.",
+    ? { title: "Treasury", sub: "The protocol treasury wallet on Sui — it holds the lending pool, mints USDC for disbursements, and receives repayments.",
         addr: "Treasury address", holdings: "Wallet holdings", view: "View on Suiscan", pool: "Lending pool",
         capacity: "Capacity", util: "Utilization", rate: "Borrow APR now", yield: "Yield earned",
-        lentOut: "Currently lent out", minted: "eUSD minted all-time (demo settlement)", empty: "No balances." }
-    : { title: "Tesouraria", sub: "A carteira da tesouraria do protocolo na Sui — detém o pool de crédito, emite eUSD para desembolsos e recebe reembolsos.",
+        lentOut: "Currently lent out", minted: "USDC minted all-time (demo settlement)", empty: "No balances." }
+    : { title: "Tesouraria", sub: "A carteira da tesouraria do protocolo na Sui — detém o pool de crédito, emite USDC para desembolsos e recebe reembolsos.",
         addr: "Endereço da tesouraria", holdings: "Saldos da carteira", view: "Ver na Suiscan", pool: "Pool de crédito",
         capacity: "Capacidade", util: "Utilização", rate: "TAN agora", yield: "Rendimento gerado",
-        lentOut: "Atualmente emprestado", minted: "eUSD emitido no total (liquidação demo)", empty: "Sem saldos." };
+        lentOut: "Atualmente emprestado", minted: "USDC emitido no total (liquidação demo)", empty: "Sem saldos." };
 
   const card = "rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200/70 dark:bg-[var(--color-card)] dark:ring-slate-700";
   const stat = (label: string, value: string, tone?: "primary" | "emerald") => (
@@ -47,7 +47,7 @@ export default function TreasuryView({ lang }: { lang: Locale }) {
     </div>
   );
 
-  const symFmt = (b: Bal) => (b.symbol === "SUI" || b.symbol === "WAL" ? fmt(b.amount, 4) : fmt(b.amount, b.symbol === "EUSD" ? 2 : 0));
+  const symFmt = (b: Bal) => (b.symbol === "SUI" || b.symbol === "WAL" ? fmt(b.amount, 4) : fmt(b.amount, b.symbol === "USDC" ? 2 : 0));
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-12">
@@ -76,7 +76,7 @@ export default function TreasuryView({ lang }: { lang: Locale }) {
       <div className="mt-4 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200/70 dark:bg-[var(--color-card)] dark:ring-slate-700">
         <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t.lentOut}</p>
         <p className="mt-1 text-2xl font-bold text-slate-800 dark:text-slate-100">€{fmt(pool?.totalDrawn ?? 0)}</p>
-        <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">{t.minted}: {fmt(treasury?.eusdSupply ?? 0, 0)} eUSD</p>
+        <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">{t.minted}: {fmt(treasury?.eusdSupply ?? 0, 0)} USDC</p>
       </div>
 
       {/* Holdings */}

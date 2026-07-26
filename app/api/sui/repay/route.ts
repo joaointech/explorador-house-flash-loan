@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
       Date.now() + 60_000,
     );
 
-    // `amount` is in eUSD. Missing / not a number / <= 0 -> full payoff (repay
+    // `amount` is in USDC. Missing / not a number / <= 0 -> full payoff (repay
     // in full, e.g. the "Repay in full" button sends no amount).
     const raw = Number(body.amount);
     const amountUsdc = Number.isFinite(raw) && raw > 0 ? Math.min(raw, q.owed / 1e6) : q.owed / 1e6;

@@ -45,7 +45,7 @@ export default function StepSelfie({
   const t = en
     ? {
         kicker: "Step 4",
-        title: "Selfie Check",
+        title: "KYC",
         sub: "A live selfie proves the document holder is here right now — the second of two World ID checks.",
         why: "This links the pledge to one human, so the same person can't borrow against two properties. No selfie image or face template is ever stored.",
         start: "Verify with World ID",
@@ -61,7 +61,7 @@ export default function StepSelfie({
       }
     : {
         kicker: "Passo 4",
-        title: "Selfie Check",
+        title: "KYC",
         sub: "Uma selfie ao vivo prova que o titular do documento está mesmo presente — a segunda das duas verificações World ID.",
         why: "Isto liga a garantia a um único humano, para que a mesma pessoa não possa hipotecar dois imóveis. Nenhuma imagem ou modelo facial é armazenado.",
         start: "Verificar com World ID",

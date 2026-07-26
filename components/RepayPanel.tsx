@@ -5,7 +5,8 @@ import type { Locale } from "@/lib/i18n";
 import { PrimaryButton, SecondaryButton } from "@/components/bridge/ui";
 
 /** Repay any amount, in full or in part — a portion via the slider, or the
- * full balance in one click. Repaying in full releases the collateral. */
+ * full balance in one click. Each partial payment releases collateral to your
+ * wallet proportionally; repaying in full burns whatever collateral remains. */
 export default function RepayPanel({
   lang, vaultId, owedUsdc, onRepaid,
 }: {
@@ -31,14 +32,14 @@ export default function RepayPanel({
 
   const t = lang === "en"
     ? {
-        title: "Repay", sub: "Repay any amount — a portion or the full balance. Repaying in full releases your collateral.",
+        title: "Repay", sub: "Repay any amount — a portion or the full balance. Partial payments release collateral proportionally; a full payoff burns what's left.",
         full: "Repay in full", owed: "Owed now", repay: "Repay", repaying: "Repaying…",
         belowInterest: "That amount doesn't cover interest accrued so far — raised to the minimum.",
         err: "Something went wrong. Try again.",
         settled: "Nothing owed — this loan is fully settled.",
       }
     : {
-        title: "Reembolsar", sub: "Reembolse qualquer valor — uma parte ou o saldo total. Reembolsar na totalidade liberta a sua garantia.",
+        title: "Reembolsar", sub: "Reembolse qualquer valor — uma parte ou o saldo total. Pagamentos parciais libertam garantia proporcionalmente; a liquidação total queima o que resta.",
         full: "Reembolsar tudo", owed: "Em dívida agora", repay: "Reembolsar", repaying: "A reembolsar…",
         belowInterest: "Esse valor não cobre os juros acumulados — ajustado para o mínimo.",
         err: "Algo correu mal. Tente novamente.",

@@ -2,7 +2,8 @@ import "server-only";
 
 /**
  * Sui settlement layer (testnet) — talks to the published `bridge::house` Move
- * package. The protocol treasury (SUI_SECRET_KEY, holder of the TreasuryCap)
+ * package. The protocol treasury (SUI_SECRET_KEY, the shared Pool's admin —
+ * the HOUSE TreasuryCap lives inside the Pool, not a separate owned object)
  * signs every write:
  *   - tokenizeHouse  → mint HOUSE equity + open a shared CollateralVault
  *   - anchorDocument → emit a DocumentAnchored event (audit trail)
@@ -16,16 +17,15 @@ import "server-only";
 
 const NETWORK = (process.env.SUI_NETWORK as "testnet" | "mainnet") || "testnet";
 const PKG = process.env.BRIDGE_PACKAGE_ID || "";
-const CAP = process.env.BRIDGE_TREASURY_CAP || "";
 const USDC = process.env.USDC_COIN_TYPE || "";
-const POOL = process.env.BRIDGE_POOL_ID || ""; // shared lending Pool (utilization/rate)
+const POOL = process.env.BRIDGE_POOL_ID || ""; // shared lending Pool (utilization/rate, holds the HOUSE TreasuryCap)
 const CLOCK = "0x6"; // Sui system Clock (well-known shared object)
 
 // Interest model — mirrors bridge::house so we can quote owed off-chain.
 const MS_PER_YEAR = 31_536_000_000;
 
 export function suiConfigured(): boolean {
-  return Boolean(process.env.SUI_SECRET_KEY && PKG && CAP);
+  return Boolean(process.env.SUI_SECRET_KEY && PKG && POOL);
 }
 
 export function suiRpcUrl(): string {
@@ -65,7 +65,7 @@ export async function tokenizeHouse(params: {
   tx.moveCall({
     target: `${PKG}::house::tokenize`,
     arguments: [
-      tx.object(CAP),
+      tx.object(POOL),
       tx.pure.address(owner),
       tx.pure.vector("u8", bytes(params.article)),
       tx.pure.vector("u8", Array.from(Buffer.from(params.docHashHex, "hex"))),
@@ -111,9 +111,9 @@ export async function disburse(params: {
   to: string;
   pctBps: number; // collateral fraction in basis points
   drawUsdc: number;
-}): Promise<{ digest: string; asset: "eUSD" | "USDC" | "SUI"; amount: number; demo: boolean }> {
+}): Promise<{ digest: string; asset: "USDC" | "SUI"; amount: number; demo: boolean }> {
   if (!suiConfigured()) {
-    return { digest: rndDigest(), asset: "eUSD", amount: params.drawUsdc, demo: true };
+    return { digest: rndDigest(), asset: "USDC", amount: params.drawUsdc, demo: true };
   }
   const { Transaction } = await import("@mysten/sui/transactions");
   const { client, keypair, sender } = await ctx();
@@ -139,17 +139,17 @@ export async function disburse(params: {
     });
   }
 
-  // 2) Pay the borrower. Prefer minting our own eUSD stablecoin (full value,
-  //    6 dp), so thousands-of-USD disbursements are real; fall back to Circle
-  //    USDC if held, else a symbolic SUI transfer.
-  let asset: "eUSD" | "USDC" | "SUI";
+  // 2) Pay the borrower. Prefer minting our own USDC stablecoin (full value,
+  //    6 dp), so thousands-of-USD disbursements are real; fall back to a real
+  //    held USDC balance if configured, else a symbolic SUI transfer.
+  let asset: "USDC" | "SUI";
   if (EUSD_CAP) {
     const base = BigInt(draw) * BigInt(1_000_000); // 6 decimals
     tx.moveCall({
-      target: `${PKG}::eusd::mint`,
+      target: `${PKG}::usdc::mint`,
       arguments: [tx.object(EUSD_CAP), tx.pure.u64(base), tx.pure.address(to)],
     });
-    asset = "eUSD";
+    asset = "USDC";
   } else if (USDC) {
     const coins = await client.getCoins({ owner: sender, coinType: USDC });
     const usable = coins.data.find((c) => BigInt(c.balance) > BigInt(0));
@@ -187,7 +187,7 @@ export type VaultState = {
 
 /**
  * Quote what's owed right now, off-chain, mirroring bridge::house.
- * Returns eUSD base units (6dp): principal + time-accrued interest.
+ * Returns USDC base units (6dp): principal + time-accrued interest.
  * Interest = principal * rateBps * elapsedMs / (10000 * MS_PER_YEAR).
  */
 export function quoteOwed(v: { drawnUsdc: number; drawnAtMs: number; rateBps: number }, nowMs = Date.now()): {
@@ -229,13 +229,13 @@ export async function getVault(vaultId: string): Promise<VaultState | null> {
   }
 }
 
-// ── Repay: mint eUSD to cover the payment (full payoff or partial) in 1 PTB ──
+// ── Repay: mint USDC to cover the payment (full payoff or partial) in 1 PTB ──
 export async function repayLoan(params: {
   vaultId: string;
   drawUsdc: number;
   drawnAtMs?: number;
   rateBps?: number;
-  /** Partial amount in eUSD (not base units). Omit — or pass >= owed — for a full payoff. */
+  /** Partial amount in USDC (not base units). Omit — or pass >= owed — for a full payoff. */
   amountUsdc?: number;
 }): Promise<{
   digest: string;
@@ -250,7 +250,7 @@ export async function repayLoan(params: {
   const EUSD_CAP = process.env.EUSD_TREASURY_CAP;
   const q = quoteOwed({ drawnUsdc: params.drawUsdc, drawnAtMs: params.drawnAtMs ?? 0, rateBps: params.rateBps ?? 0 });
 
-  // What actually gets paid, in eUSD base units. Anything at or above owed is a payoff.
+  // What actually gets paid, in USDC base units. Anything at or above owed is a payoff.
   const asked = params.amountUsdc == null ? q.owed : Math.round(params.amountUsdc * 1e6);
   const paid = Math.min(Math.max(asked, 0), q.owed);
   const partial = paid < q.owed;
@@ -283,7 +283,7 @@ export async function repayLoan(params: {
 
   const tx = new Transaction();
   const [coin] = tx.moveCall({
-    target: `${PKG}::eusd::mint_coin`,
+    target: `${PKG}::usdc::mint_coin`,
     arguments: [tx.object(EUSD_CAP), tx.pure.u64(mintAmount)],
   });
   tx.moveCall({
@@ -357,7 +357,7 @@ export async function mmSetDraw(params: { vaultId: string; newDraw: number }): P
   return { digest: res.digest, demo: false };
 }
 
-// ── Treasury summary (SUI balance + total eUSD in circulation) ───────
+// ── Treasury summary (SUI balance + total USDC in circulation) ───────
 export async function treasurySummary(): Promise<{ address: string; suiBalance: number; eusdSupply: number; demo: boolean }> {
   const EUSD = process.env.EUSD_COIN_TYPE;
   if (!suiConfigured()) return { address: "", suiBalance: 0, eusdSupply: 0, demo: true };
@@ -375,8 +375,8 @@ export async function treasurySummary(): Promise<{ address: string; suiBalance: 
   }
 }
 
-// ── Full treasury wallet detail (all coin balances + eUSD supply) ────
-const DECIMALS: Record<string, number> = { SUI: 9, EUSD: 6, HOUSE: 0, WAL: 9, USDC: 6 };
+// ── Full treasury wallet detail (all coin balances + USDC supply) ────
+const DECIMALS: Record<string, number> = { SUI: 9, HOUSE: 0, WAL: 9, USDC: 6 };
 export type TreasuryDetail = {
   address: string;
   suiBalance: number;
@@ -391,7 +391,7 @@ export async function treasuryDetail(): Promise<TreasuryDetail> {
   const { client, sender } = await ctx();
   try {
     const all = await client.getAllBalances({ owner: sender });
-    // Only the current deployment's coins — hide HOUSE/eUSD left over from earlier
+    // Only the current deployment's coins — hide HOUSE/USDC left over from earlier
     // test package publishes (same symbol, different package id).
     const keep = new Set([EUSD, HOUSE].filter(Boolean));
     const balances = all
@@ -415,7 +415,9 @@ export async function treasuryDetail(): Promise<TreasuryDetail> {
   }
 }
 
-// ── HOUSE balance actually held in a wallet (non-zero only after payoff) ─
+// ── HOUSE balance actually held in a wallet — grows with each partial repay
+// (proportional release); a full payoff burns whatever's left instead of
+// adding to it, so this never increases at that final step. ─────────────
 export async function houseBalance(owner: string): Promise<number> {
   const coinType = process.env.HOUSE_COIN_TYPE || `${PKG}::house::HOUSE`;
   if (!suiConfigured() || !owner?.startsWith("0x")) return 0;

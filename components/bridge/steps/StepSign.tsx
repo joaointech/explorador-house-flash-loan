@@ -42,7 +42,7 @@ export default function StepSign({ lang, session, patch, next, back, canBack }: 
         nameNote: "This name is printed on the debt acknowledgement — confirm or correct it.",
         accept: "I have read and accept the terms of this document.",
         sign: "Sign with Chave Móvel Digital", back: "Back",
-        cmdTitle: "Chave Móvel Digital", demo: "DEMO",
+        cmdTitle: "Chave Móvel Digital",
         phoneLabel: "Mobile number", passwordLabel: "Password", noSms: "No SMS is sent — this is a simulation.",
         authenticate: "Authenticate", verifying: "Verifying your credentials…", otpTitle: "Security code",
         otpNote: "Enter any 4 digits — simulation.", otpLabel: "Code",
@@ -62,7 +62,7 @@ export default function StepSign({ lang, session, patch, next, back, canBack }: 
         nameNote: "Este nome consta no termo de dívida — confirme ou corrija.",
         accept: "Li e aceito os termos deste documento.",
         sign: "Assinar com Chave Móvel Digital", back: "Voltar",
-        cmdTitle: "Chave Móvel Digital", demo: "DEMO",
+        cmdTitle: "Chave Móvel Digital",
         phoneLabel: "Número de telemóvel", passwordLabel: "Palavra-passe", noSms: "Não é enviado SMS — isto é uma simulação.",
         authenticate: "Autenticar", verifying: "A verificar as suas credenciais…", otpTitle: "Código de segurança",
         otpNote: "Introduza quaisquer 4 dígitos — simulação.", otpLabel: "Código",
@@ -81,7 +81,7 @@ export default function StepSign({ lang, session, patch, next, back, canBack }: 
     }
     setError(null);
     setScreen("cmd-verifying");
-    await sleep(5000);
+    await sleep(2000);
     setScreen("cmd-otp");
   };
 
@@ -167,7 +167,7 @@ export default function StepSign({ lang, session, patch, next, back, canBack }: 
             <Spinner /> {t.signing}
           </div>
         ) : screen === "cmd-phone" ? (
-          <CmdScreen title={t.cmdTitle} demo={t.demo} note={t.noSms}>
+          <CmdScreen title={t.cmdTitle} note={t.noSms}>
             <Field label={t.phoneLabel} value={phone} onChange={setPhone} placeholder="912 345 678" />
             <Field label={t.passwordLabel} value={password} onChange={setPassword} type="password" />
             {error && <p className="text-sm text-[var(--color-danger)]">{error}</p>}
@@ -181,7 +181,7 @@ export default function StepSign({ lang, session, patch, next, back, canBack }: 
             <Spinner /> {t.verifying}
           </div>
         ) : screen === "cmd-otp" ? (
-          <CmdScreen title={t.otpTitle} demo={t.demo} note={t.otpNote}>
+          <CmdScreen title={t.otpTitle} note={t.otpNote}>
             <Field label={t.otpLabel} value={otp} onChange={setOtp} placeholder="0000" maxLength={4} />
             {error && <p className="text-sm text-[var(--color-danger)]">{error}</p>}
             <div className="flex items-center gap-3 pt-1">
@@ -229,14 +229,13 @@ export default function StepSign({ lang, session, patch, next, back, canBack }: 
   );
 }
 
-/** Wraps the two CMD mock screens with a shared DEMO-labelled header. */
-function CmdScreen({ title, demo, note, children }: { title: string; demo: string; note: string; children: React.ReactNode }) {
+/** Wraps the two CMD mock screens with a shared header. */
+function CmdScreen({ title, note, children }: { title: string; note: string; children: React.ReactNode }) {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
         <span className="text-2xl">🔐</span>
         <p className="text-lg font-semibold text-slate-800 dark:text-slate-100">{title}</p>
-        <Badge tone="amber">{demo}</Badge>
       </div>
       <p className="text-xs text-slate-500 dark:text-slate-400">{note}</p>
       {children}

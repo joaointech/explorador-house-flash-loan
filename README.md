@@ -65,11 +65,11 @@ the full flow without any keys. Each real testnet id links to **Suiscan**.
 ```bash
 cd sui && sui client publish --gas-budget 200000000   # or: npm run sui:publish
 ```
-Copy the printed package id + TreasuryCap into `.env.local` (`BRIDGE_PACKAGE_ID`, `BRIDGE_TREASURY_CAP`, `HOUSE_COIN_TYPE`). Publishing also **shares a `Pool` object** — copy its object id into `BRIDGE_POOL_ID` (it's the created shared object of type `…::house::Pool`; the rate/interest features need it).
+Copy the printed package id into `.env.local` (`BRIDGE_PACKAGE_ID`, `HOUSE_COIN_TYPE`). Publishing also **shares a `Pool` object** (which holds the HOUSE TreasuryCap — there's no separate owned cap to copy) — copy its object id into `BRIDGE_POOL_ID` (it's the created shared object of type `…::house::Pool`; minting, the rate/interest features, and repay's burn step all need it).
 
 ### Enabling each integration (all independent)
 
-- **Sui settlement** (real mint / anchor / disburse): set `SUI_SECRET_KEY` (funded treasury) + `BRIDGE_PACKAGE_ID` + `BRIDGE_TREASURY_CAP`. Fund via https://faucet.sui.io.
+- **Sui settlement** (real mint / anchor / disburse): set `SUI_SECRET_KEY` (funded treasury) + `BRIDGE_PACKAGE_ID` + `BRIDGE_POOL_ID`. Fund via https://faucet.sui.io.
 - **Stablecoin payout**: the treasury mints our own **eUSD** (`EUSD_TREASURY_CAP`) so disbursements are real full-value transfers (thousands of USD). Falls back to Circle USDC (if held) or a symbolic SUI transfer when `EUSD_TREASURY_CAP` is unset.
 - **Privy wallet**: `NEXT_PUBLIC_PRIVY_APP_ID` from dashboard.privy.io.
 - **Walrus storage**: needs the treasury funded with **WAL** — otherwise a demo blob id is returned (the Sui anchor is still real).

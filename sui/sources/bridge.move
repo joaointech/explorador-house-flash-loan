@@ -16,7 +16,7 @@ module bridge::house {
     use sui::balance::{Self, Balance};
     use sui::clock::{Self, Clock};
     use sui::event;
-    use bridge::eusd::EUSD;
+    use bridge::usdc::USDC;
 
     /// Repayment coin is worth less than principal + accrued interest.
     const EInsufficientRepayment: u64 = 1;
@@ -49,6 +49,7 @@ module bridge::house {
         capacity: u64,         // total lendable liquidity, whole EUR/USD
         total_drawn: u64,      // outstanding principal across all vaults, whole EUR/USD
         total_interest: u64,   // lifetime interest settled to treasury, eUSD base units (6dp)
+        house_cap: TreasuryCap<HOUSE>, // mints at tokenize, burns retired collateral at full repay
     }
 
     /// A tokenized property held as collateral for a liquidity draw.
@@ -79,6 +80,7 @@ module bridge::house {
         interest_eusd: u64,   // interest settled (incl. the sub-euro dust)
         principal_eusd: u64,  // principal actually retired, in eUSD base units
         remaining_usdc: u64,  // principal still outstanding, whole EUR/USD
+        released_house: u64,  // HOUSE released to owner, proportional to principal retired
     }
 
     /// Publish-time: create the HOUSE currency, hand the treasury cap to the
@@ -94,7 +96,6 @@ module bridge::house {
             ctx,
         );
         transfer::public_freeze_object(metadata);
-        transfer::public_transfer(treasury, ctx.sender());
 
         let pool = Pool {
             id: object::new(ctx),
@@ -102,20 +103,22 @@ module bridge::house {
             capacity: DEFAULT_CAPACITY,
             total_drawn: 0,
             total_interest: 0,
+            house_cap: treasury,
         };
         transfer::share_object(pool);
     }
 
     /// Treasury-only: mint `vpt` HOUSE and open a shared vault for `owner`.
     public entry fun tokenize(
-        cap: &mut TreasuryCap<HOUSE>,
+        pool: &mut Pool,
         owner: address,
         article: vector<u8>,
         doc_hash: vector<u8>,
         vpt: u64,
         ctx: &mut TxContext,
     ) {
-        let minted = coin::mint(cap, vpt, ctx);
+        assert!(ctx.sender() == pool.admin, EUnauthorized);
+        let minted = coin::mint(&mut pool.house_cap, vpt, ctx);
         let vault = CollateralVault {
             id: object::new(ctx),
             owner,
@@ -221,12 +224,13 @@ module bridge::house {
     }
 
     /// Repay principal + time-accrued interest with eUSD. Settles owed to the
-    /// treasury, refunds any overpayment to the payer, releases the locked HOUSE
-    /// equity to the owner, and books the interest as protocol yield.
+    /// treasury, refunds any overpayment to the payer, burns the locked HOUSE
+    /// equity (retiring it rather than releasing it), and books the interest as
+    /// protocol yield.
     public entry fun repay(
         vault: &mut CollateralVault,
         pool: &mut Pool,
-        mut payment: Coin<EUSD>,
+        mut payment: Coin<USDC>,
         clock: &Clock,
         ctx: &mut TxContext,
     ) {
@@ -245,10 +249,13 @@ module bridge::house {
             coin::destroy_zero(payment);
         };
 
-        // Release all HOUSE equity back to the owner.
+        // Retire the remaining locked equity — burned, not handed back. Partial
+        // repayments already released HOUSE proportionally as principal was paid
+        // down; what's left at full payoff was the collateral buffer, not equity
+        // still owed to the owner.
         let released_bal = balance::withdraw_all(&mut vault.equity);
-        let released_amt = balance::value(&released_bal);
-        transfer::public_transfer(coin::from_balance(released_bal, ctx), vault.owner);
+        let released_coin = coin::from_balance(released_bal, ctx);
+        let released_amt = coin::burn(&mut pool.house_cap, released_coin);
 
         // Pool bookkeeping: free the capacity, tally the yield.
         if (pool.total_drawn >= vault.drawn_usdc) {
@@ -273,8 +280,9 @@ module bridge::house {
 
     /// Repay *part* of the loan. Accrued interest is settled first, whatever is
     /// left retires whole euros of principal, and the interest clock restarts on
-    /// the reduced principal. Collateral stays locked and `repaid` stays false —
-    /// only a full `repay` releases the equity.
+    /// the reduced principal. Locked HOUSE is released to the owner proportional
+    /// to the principal retired — `repaid` stays false, and a full `repay` still
+    /// handles whatever collateral remains (burning it, not releasing it).
     ///
     /// If `payment` already covers principal + interest this just delegates to
     /// `repay` (on Sui an entry function is callable from Move code, cf.
@@ -283,7 +291,7 @@ module bridge::house {
     public entry fun repay_partial(
         vault: &mut CollateralVault,
         pool: &mut Pool,
-        payment: Coin<EUSD>,
+        payment: Coin<USDC>,
         clock: &Clock,
         ctx: &mut TxContext,
     ) {
@@ -310,6 +318,16 @@ module bridge::house {
         // no split, no refund, nothing left dangling.
         transfer::public_transfer(payment, vault.treasury);
 
+        // Release the same fraction of locked collateral as the fraction of
+        // outstanding principal just retired. Computed against drawn_usdc
+        // *before* it's reduced below, in u128 to avoid overflow.
+        let release_amt = ((vault.locked as u128) * (principal_units as u128) / (vault.drawn_usdc as u128)) as u64;
+        if (release_amt > 0) {
+            vault.locked = vault.locked - release_amt;
+            let released_bal = balance::split(&mut vault.equity, release_amt);
+            transfer::public_transfer(coin::from_balance(released_bal, ctx), vault.owner);
+        };
+
         // paid < owed  =>  to_principal < drawn_usdc * 1_000_000  =>  principal_units < drawn_usdc,
         // so this never underflows and never zeroes the loan (that's `repay`'s job).
         vault.drawn_usdc = vault.drawn_usdc - principal_units;
@@ -329,6 +347,7 @@ module bridge::house {
             interest_eusd: interest_booked,
             principal_eusd: principal_units * 1_000_000,
             remaining_usdc: vault.drawn_usdc,
+            released_house: release_amt,
         });
     }
 
@@ -383,8 +402,11 @@ module bridge::house {
     public fun pool_total_interest(p: &Pool): u64 { p.total_interest }
 
     // ── Tests ───────────────────────────────────────────────────────────
+    /// Mints the vault's equity through `pool`'s real cap (not `balance::create_for_testing`)
+    /// so the cap's tracked supply matches what tests later burn via `repay`.
     #[test_only]
-    fun mk_vault(vpt: u64, drawn: u64, rate_bps: u64, drawn_at: u64, ctx: &mut TxContext): CollateralVault {
+    fun mk_vault(pool: &mut Pool, vpt: u64, drawn: u64, rate_bps: u64, drawn_at: u64, ctx: &mut TxContext): CollateralVault {
+        let minted = coin::mint(&mut pool.house_cap, vpt, ctx);
         CollateralVault {
             id: object::new(ctx),
             owner: @0xB,
@@ -392,7 +414,7 @@ module bridge::house {
             article: string::utf8(b"1234"),
             doc_hash: b"hash",
             vpt,
-            equity: balance::create_for_testing<HOUSE>(vpt),
+            equity: coin::into_balance(minted),
             locked: 0,
             drawn_usdc: drawn,
             drawn_at_ms: drawn_at,
@@ -403,7 +425,14 @@ module bridge::house {
 
     #[test_only]
     fun mk_pool(capacity: u64, total_drawn: u64, ctx: &mut TxContext): Pool {
-        Pool { id: object::new(ctx), admin: @0xA, capacity, total_drawn, total_interest: 0 }
+        Pool {
+            id: object::new(ctx),
+            admin: @0xA,
+            capacity,
+            total_drawn,
+            total_interest: 0,
+            house_cap: coin::create_treasury_cap_for_testing<HOUSE>(ctx),
+        }
     }
 
     #[test]
@@ -436,8 +465,9 @@ module bridge::house {
     #[test]
     fun test_interest_accrual() {
         let mut ctx = tx_context::dummy();
+        let mut pool = mk_pool(1_000_000, 0, &mut ctx);
         // €200k drawn at 7.25% APR (725 bps).
-        let v = mk_vault(200_000, 200_000, 725, 0, &mut ctx);
+        let v = mk_vault(&mut pool, 200_000, 200_000, 725, 0, &mut ctx);
         // One full year -> principal(200000e6) * 725 / 10000 = 14,500 eUSD.
         assert!(interest_owed(&v, MS_PER_YEAR) == 14_500 * 1_000_000, 0);
         // Half a year -> 7,250 eUSD.
@@ -447,6 +477,7 @@ module bridge::house {
         // total_owed = principal + interest.
         assert!(total_owed(&v, MS_PER_YEAR) == (200_000 + 14_500) * 1_000_000, 3);
         std::unit_test::destroy(v);
+        std::unit_test::destroy(pool);
     }
 
     #[test]
@@ -455,12 +486,12 @@ module bridge::house {
         let ctx = sui::test_scenario::ctx(&mut sc);
         let mut clock = clock::create_for_testing(ctx);
         let mut pool = mk_pool(1_000_000, 200_000, ctx);
-        let mut vault = mk_vault(200_000, 200_000, 725, 0, ctx);
+        let mut vault = mk_vault(&mut pool, 200_000, 200_000, 725, 0, ctx);
 
         // Hold for half a year, then repay with an overpayment.
         clock::set_for_testing(&mut clock, MS_PER_YEAR / 2);
         let owed = total_owed(&vault, MS_PER_YEAR / 2);
-        let payment = coin::mint_for_testing<EUSD>(owed + 5_000_000, ctx); // +5 eUSD
+        let payment = coin::mint_for_testing<USDC>(owed + 5_000_000, ctx); // +5 eUSD
         repay(&mut vault, &mut pool, payment, &clock, ctx);
 
         assert!(vault.repaid, 0);
@@ -483,11 +514,11 @@ module bridge::house {
         let ctx = sui::test_scenario::ctx(&mut sc);
         let mut clock = clock::create_for_testing(ctx);
         let mut pool = mk_pool(1_000_000, 200_000, ctx);
-        let mut vault = mk_vault(200_000, 200_000, 725, 0, ctx);
+        let mut vault = mk_vault(&mut pool, 200_000, 200_000, 725, 0, ctx);
 
         clock::set_for_testing(&mut clock, MS_PER_YEAR / 2);
         // Pay only principal, missing the accrued interest -> must abort.
-        let payment = coin::mint_for_testing<EUSD>(200_000 * 1_000_000, ctx);
+        let payment = coin::mint_for_testing<USDC>(200_000 * 1_000_000, ctx);
         repay(&mut vault, &mut pool, payment, &clock, ctx);
 
         std::unit_test::destroy(vault);
@@ -502,20 +533,21 @@ module bridge::house {
         let ctx = sui::test_scenario::ctx(&mut sc);
         let mut clock = clock::create_for_testing(ctx);
         let mut pool = mk_pool(1_000_000, 200_000, ctx);
-        let mut vault = mk_vault(200_000, 200_000, 725, 0, ctx);
+        let mut vault = mk_vault(&mut pool, 200_000, 200_000, 725, 0, ctx);
         vault.locked = 60_000; // collateral pledged at draw
 
         // Half a year at 7.25% on €200k -> 7,250 eUSD interest.
         clock::set_for_testing(&mut clock, MS_PER_YEAR / 2);
         // Pay interest + €20,000 of principal.
-        let payment = coin::mint_for_testing<EUSD>(7_250 * 1_000_000 + 20_000 * 1_000_000, ctx);
+        let payment = coin::mint_for_testing<USDC>(7_250 * 1_000_000 + 20_000 * 1_000_000, ctx);
         repay_partial(&mut vault, &mut pool, payment, &clock, ctx);
 
         assert!(vault.drawn_usdc == 180_000, 0);                  // principal reduced
         assert!(vault.drawn_at_ms == MS_PER_YEAR / 2, 1);         // clock restarted
         assert!(!vault.repaid, 2);                                // loan still open
-        assert!(vault.locked == 60_000, 3);                       // collateral still locked
-        assert!(balance::value(&vault.equity) == 200_000, 4);     // equity NOT released
+        // 60,000 locked * 20,000/200,000 principal retired = 6,000 released.
+        assert!(vault.locked == 54_000, 3);                       // collateral released proportionally
+        assert!(balance::value(&vault.equity) == 194_000, 4);     // equity reduced by the release
         assert!(pool.total_drawn == 180_000, 5);                  // capacity partly freed
         assert!(pool.total_interest == 7_250 * 1_000_000, 6);     // yield booked
 
@@ -534,11 +566,11 @@ module bridge::house {
         let ctx = sui::test_scenario::ctx(&mut sc);
         let mut clock = clock::create_for_testing(ctx);
         let mut pool = mk_pool(1_000_000, 200_000, ctx);
-        let mut vault = mk_vault(200_000, 200_000, 725, 0, ctx);
+        let mut vault = mk_vault(&mut pool, 200_000, 200_000, 725, 0, ctx);
 
         clock::set_for_testing(&mut clock, MS_PER_YEAR / 2);
         // Interest + 1.75 eUSD: €1 of principal, €0.75 of dust.
-        let payment = coin::mint_for_testing<EUSD>(7_250 * 1_000_000 + 1_750_000, ctx);
+        let payment = coin::mint_for_testing<USDC>(7_250 * 1_000_000 + 1_750_000, ctx);
         repay_partial(&mut vault, &mut pool, payment, &clock, ctx);
 
         assert!(vault.drawn_usdc == 199_999, 0);
@@ -558,11 +590,11 @@ module bridge::house {
         let ctx = sui::test_scenario::ctx(&mut sc);
         let mut clock = clock::create_for_testing(ctx);
         let mut pool = mk_pool(1_000_000, 200_000, ctx);
-        let mut vault = mk_vault(200_000, 200_000, 725, 0, ctx);
+        let mut vault = mk_vault(&mut pool, 200_000, 200_000, 725, 0, ctx);
 
         clock::set_for_testing(&mut clock, MS_PER_YEAR / 2);
         // One base unit short of the accrued interest -> must abort.
-        let payment = coin::mint_for_testing<EUSD>(7_250 * 1_000_000 - 1, ctx);
+        let payment = coin::mint_for_testing<USDC>(7_250 * 1_000_000 - 1, ctx);
         repay_partial(&mut vault, &mut pool, payment, &clock, ctx);
 
         std::unit_test::destroy(vault);
@@ -577,21 +609,23 @@ module bridge::house {
         let ctx = sui::test_scenario::ctx(&mut sc);
         let mut clock = clock::create_for_testing(ctx);
         let mut pool = mk_pool(1_000_000, 200_000, ctx);
-        let mut vault = mk_vault(200_000, 200_000, 725, 0, ctx);
+        let mut vault = mk_vault(&mut pool, 200_000, 200_000, 725, 0, ctx);
         vault.locked = 60_000;
 
         // Leg 1: half a year, pay interest + €20k.
         clock::set_for_testing(&mut clock, MS_PER_YEAR / 2);
-        let p1 = coin::mint_for_testing<EUSD>(7_250 * 1_000_000 + 20_000 * 1_000_000, ctx);
+        let p1 = coin::mint_for_testing<USDC>(7_250 * 1_000_000 + 20_000 * 1_000_000, ctx);
         repay_partial(&mut vault, &mut pool, p1, &clock, ctx);
         assert!(vault.drawn_usdc == 180_000, 0);
+        assert!(vault.locked == 54_000, 8);                        // 6,000 released proportionally
+        assert!(balance::value(&vault.equity) == 194_000, 9);
 
         // Leg 2: another half year on €180k -> 6,525 eUSD. Pay it all through
         // repay_partial: it must notice paid >= owed and delegate to repay.
         clock::set_for_testing(&mut clock, MS_PER_YEAR);
         let owed = total_owed(&vault, MS_PER_YEAR);
         assert!(owed == (180_000 + 6_525) * 1_000_000, 1);
-        let p2 = coin::mint_for_testing<EUSD>(owed, ctx);
+        let p2 = coin::mint_for_testing<USDC>(owed, ctx);
         repay_partial(&mut vault, &mut pool, p2, &clock, ctx);
 
         assert!(vault.repaid, 2);
@@ -614,7 +648,7 @@ module bridge::house {
         let clock = clock::create_for_testing(ctx);
         let mut pool = mk_pool(1_000_000, 0, ctx);
         // Fresh vault: full equity, nothing drawn yet.
-        let mut vault = mk_vault(100_000, 0, 0, 0, ctx);
+        let mut vault = mk_vault(&mut pool, 100_000, 0, 0, 0, ctx);
         assert!(balance::value(&vault.equity) == 100_000, 0);
 
         // Collateralize 50% and draw: only 50,000 stays locked as collateral,

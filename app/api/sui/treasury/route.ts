@@ -5,7 +5,7 @@ export const runtime = "nodejs";
 export const maxDuration = 30;
 
 // Everything about the protocol treasury wallet: its address, every coin balance
-// it holds, eUSD in circulation, and the lending pool it runs.
+// it holds, USDC in circulation, and the lending pool it runs.
 export async function GET() {
   try {
     const [treasury, pool] = await Promise.all([treasuryDetail(), getPool()]);

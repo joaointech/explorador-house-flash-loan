@@ -52,7 +52,7 @@ export default function LoansView({ lang }: { lang: Locale }) {
     ? {
         title: "Loan management", sub: "Every bridge position, live from Sui. Visit your account page to repay one of yours.",
         empty: "No loans yet.", start: "Start the loan", myAccount: "Your account",
-        treasury: "Treasury", tSui: "SUI balance", tEusd: "eUSD minted", tAddr: "Address",
+        treasury: "Treasury", tSui: "SUI balance", tEusd: "USDC minted", tAddr: "Address",
         util: "Pool utilization", curRate: "borrow APR now", yieldEarned: "Yield earned",
         rate: "Borrow APR", interest: "Interest accrued", owed: "Owed now", proj90: "≈ interest if held 90 days",
         property: "Property", drawn: "Drawn", collateral: "Collateral", vaultL: "Vault", coinL: "HOUSE coin", disburseL: "Disbursement", repayL: "Repayment",
@@ -61,7 +61,7 @@ export default function LoansView({ lang }: { lang: Locale }) {
     : {
         title: "Gestão de empréstimos", sub: "Todas as posições-ponte, em tempo real na Sui. Visite a sua conta para reembolsar uma sua.",
         empty: "Ainda não há empréstimos.", start: "Iniciar o empréstimo", myAccount: "A sua conta",
-        treasury: "Tesouraria", tSui: "Saldo SUI", tEusd: "eUSD emitido", tAddr: "Endereço",
+        treasury: "Tesouraria", tSui: "Saldo SUI", tEusd: "USDC emitido", tAddr: "Endereço",
         util: "Utilização do pool", curRate: "TAN agora", yieldEarned: "Rendimento gerado",
         rate: "TAN", interest: "Juros acumulados", owed: "Em dívida agora", proj90: "≈ juros se mantido 90 dias",
         property: "Imóvel", drawn: "Levantado", collateral: "Garantia", vaultL: "Vault", coinL: "Moeda HOUSE", disburseL: "Pagamento", repayL: "Reembolso",

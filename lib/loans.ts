@@ -23,7 +23,7 @@ export type LoanEntry = {
   // Sui tx digest of the DocumentAnchored event for the documents below (from store-docs).
   docAnchorDigest?: string;
   repayDigest?: string;
-  // Cumulative eUSD paid back. On-chain only tracks what's *outstanding*, not history.
+  // Cumulative USDC paid back. On-chain only tracks what's *outstanding*, not history.
   repaidUsdc?: number;
   // Every settlement digest, oldest first. `repayDigest` stays the latest one.
   repayDigests?: string[];
